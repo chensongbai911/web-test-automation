@@ -1,6 +1,30 @@
 // 内容脚本 - 在页面上下文中运行
 console.log('[Web测试工具] Content script已加载');
 
+// 🛡️ 捕获并过滤第三方网站的JavaScript错误，避免干扰测试
+window.addEventListener('error', (event) => {
+  // 检查是否是第三方网站的错误（不是我们的扩展代码）
+  if (event.filename && !event.filename.includes('chrome-extension://')) {
+    // 只记录警告，不中断测试
+    console.warn('[Web测试工具] 检测到页面JavaScript错误（已忽略）:', {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno
+    });
+    // 阻止错误继续传播
+    event.preventDefault();
+    return true;
+  }
+}, true);
+
+// 🛡️ 捕获Promise rejection错误
+window.addEventListener('unhandledrejection', (event) => {
+  console.warn('[Web测试工具] 检测到未处理的Promise错误（已忽略）:', event.reason);
+  // 阻止错误继续传播
+  event.preventDefault();
+});
+
 // 初始化全局处理器（等待其他脚本加载完成）
 setTimeout(() => {
   try {

@@ -73,18 +73,18 @@ let isFloatingBallMode = false;
 tabBtns.forEach(btn => {
   btn.addEventListener('click', (e) => {
     const tab = e.target.dataset.tab;
-    
+
     // 移除所有active类
     tabBtns.forEach(b => b.classList.remove('active'));
     tabContents.forEach(c => c.classList.remove('active'));
-    
+
     // 添加active类到选中的标签
     e.target.classList.add('active');
     document.getElementById(tab + '-tab').classList.add('active');
-    
+
     // 根据标签页改变测试模式
     testingMode = tab === 'manual' ? 'auto' : 'custom';
-    
+
     // 更新开始按钮文本
     if (testingMode === 'auto') {
       startTestBtn.innerHTML = '<span class="icon">▶</span> 开始测试';
@@ -119,7 +119,7 @@ uploadBox.addEventListener('dragleave', () => {
 uploadBox.addEventListener('drop', (e) => {
   e.preventDefault();
   uploadBox.classList.remove('dragover');
-  
+
   if (e.dataTransfer.files.length > 0) {
     const file = e.dataTransfer.files[0];
     if (file.type === 'application/json' || file.name.endsWith('.json')) {
@@ -147,7 +147,7 @@ downloadTemplateBtn.addEventListener('click', (e) => {
 /**
  * 处理文件选择
  */
-function handleFileSelect(e) {
+function handleFileSelect (e) {
   const file = e.target.files[0];
   if (file) {
     processFile(file);
@@ -157,17 +157,17 @@ function handleFileSelect(e) {
 /**
  * 处理文件内容
  */
-function processFile(file) {
+function processFile (file) {
   const reader = new FileReader();
-  
+
   reader.onload = (e) => {
     try {
       const content = e.target.result;
-      
+
       // 使用TestCaseParser解析文件
       const parser = new TestCaseParser();
       const result = parser.parse(content);
-      
+
       if (result.success) {
         uploadedTestCases = result.data;
         displayFileSuccess(file, result);
@@ -178,25 +178,25 @@ function processFile(file) {
       showFileError(`❌ 文件处理失败: ${error.message}`);
     }
   };
-  
+
   reader.onerror = () => {
     showFileError('❌ 文件读取失败');
   };
-  
+
   reader.readAsText(file);
 }
 
 /**
  * 显示文件成功信息
  */
-function displayFileSuccess(file, parseResult) {
+function displayFileSuccess (file, parseResult) {
   uploadBox.style.display = 'none';
   fileInfo.style.display = 'block';
   fileErrors.style.display = 'none';
-  
+
   // 显示文件名
   fileName.textContent = `✅ ${file.name} (${formatFileSize(file.size)})`;
-  
+
   // 显示统计信息
   const stats = parseResult.data ? new TestCaseParser().getStatistics(parseResult.data) : {};
   fileStats.innerHTML = `
@@ -208,7 +208,7 @@ function displayFileSuccess(file, parseResult) {
     <div>✔️ 验证步骤: ${stats.verifySteps} 个</div>
     <div>⏱️ 预计耗时: 约 ${stats.estimatedDuration} 秒</div>
   `;
-  
+
   // 显示警告信息
   if (parseResult.warnings.length > 0) {
     fileErrors.classList.remove('error');
@@ -223,15 +223,15 @@ function displayFileSuccess(file, parseResult) {
 /**
  * 显示文件错误信息
  */
-function displayFileErrors(file, parseResult) {
+function displayFileErrors (file, parseResult) {
   uploadBox.style.display = 'none';
   fileInfo.style.display = 'block';
   fileErrors.style.display = 'block';
   fileErrors.classList.add('error');
-  
+
   // 显示文件名
   fileName.textContent = `❌ ${file.name} (${formatFileSize(file.size)})`;
-  
+
   // 显示错误信息
   fileErrors.innerHTML = `
     <strong>❌ 验证失败 (${parseResult.errors.length} 个错误):</strong>
@@ -239,14 +239,14 @@ function displayFileErrors(file, parseResult) {
     ${parseResult.errors.length > 10 ? `<li>... 还有 ${parseResult.errors.length - 10} 个错误</li>` : ''}
     </ul>
   `;
-  
+
   uploadedTestCases = null;
 }
 
 /**
  * 显示文件错误
  */
-function showFileError(message) {
+function showFileError (message) {
   uploadBox.style.display = 'block';
   fileInfo.style.display = 'none';
   fileInfo.innerHTML = `
@@ -262,7 +262,7 @@ function showFileError(message) {
 /**
  * 下载测试模板
  */
-function downloadTestTemplate() {
+function downloadTestTemplate () {
   const template = {
     version: '1.0',
     testName: '示例测试套件',
@@ -311,7 +311,7 @@ function downloadTestTemplate() {
       }
     ]
   };
-  
+
   const dataStr = JSON.stringify(template, null, 2);
   const dataBlob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(dataBlob);
@@ -325,7 +325,7 @@ function downloadTestTemplate() {
 /**
  * 格式化文件大小
  */
-function formatFileSize(bytes) {
+function formatFileSize (bytes) {
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB'];
@@ -339,14 +339,14 @@ function formatFileSize(bytes) {
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('[Popup] 页面已加载');
-  
+
   // 初始化Qwen
   initializeQwen();
-  
+
   // 首先获取当前活动标签页，自动填充URL
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentActiveTab = tabs[0];
-    
+
     if (currentActiveTab && currentActiveTab.url) {
       if (!currentActiveTab.url.startsWith('chrome://') &&
         !currentActiveTab.url.startsWith('chrome-extension://') &&
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
         urlInput.value = currentActiveTab.url;
       }
     }
-    
+
     // 恢复配置
     chrome.storage.local.get(['savedConfig', 'testingState'], (result) => {
       if (result.savedConfig) {
@@ -369,19 +369,19 @@ document.addEventListener('DOMContentLoaded', () => {
         maxElements.value = config.maxElements || 100;
         timeoutInput.value = config.timeout || 30;
       }
-      
+
       // 恢复测试状态
       if (result.testingState && result.testingState.inProgress) {
         const testingState = result.testingState;
         const startTime = new Date(testingState.startTime).getTime();
         const now = new Date().getTime();
         const elapsed = (now - startTime) / 1000 / 60;
-        
+
         if (elapsed > 5) {
           chrome.storage.local.set({ testingState: { inProgress: false } });
           return;
         }
-        
+
         chrome.tabs.get(testingState.tabId, (tab) => {
           if (chrome.runtime.lastError || !tab) {
             chrome.storage.local.set({ testingState: { inProgress: false } });
@@ -414,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Qwen初始化
 // =============================================
 
-async function initializeQwen() {
+async function initializeQwen () {
   try {
     chrome.storage.local.get(['qwenApiKey'], (result) => {
       if (result.qwenApiKey) {
@@ -449,14 +449,14 @@ startTestBtn.addEventListener('click', async () => {
 /**
  * 开始自动测试
  */
-async function startAutoTest() {
+async function startAutoTest () {
   const url = urlInput.value.trim();
-  
+
   if (!url) {
     alert('❌ 请输入目标网址');
     return;
   }
-  
+
   // 构建配置
   const config = {
     testInteraction: testInteraction.checked,
@@ -469,10 +469,10 @@ async function startAutoTest() {
     maxElements: parseInt(maxElements.value) || 100,
     timeout: parseInt(timeoutInput.value) || 30
   };
-  
+
   // 保存配置
   chrome.storage.local.set({ savedConfig: config });
-  
+
   testingInProgress = true;
   startTestBtn.disabled = true;
   stopTestBtn.disabled = false;
@@ -492,7 +492,7 @@ async function startAutoTest() {
       <div id="logContainer" class="log-container"></div>
     </div>
   `;
-  
+
   // 重新获取元素引用
   testedCount = document.getElementById('testedCount');
   successCount = document.getElementById('successCount');
@@ -500,13 +500,13 @@ async function startAutoTest() {
   apiErrorCount = document.getElementById('apiErrorCount');
   progressBar = document.getElementById('progressBar');
   logContainer = document.getElementById('logContainer');
-  
+
   addLog('🚀 正在启动自动测试...', 'info');
-  
+
   // 打开或导航到目标网址
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const activeTab = tabs[0];
-    
+
     // 标准化URL
     const normalizeUrl = (url) => {
       try {
@@ -516,12 +516,12 @@ async function startAutoTest() {
         return url.replace(/\/$/, '');
       }
     };
-    
+
     const targetUrl = normalizeUrl(url);
     const currentUrl = normalizeUrl(activeTab.url || '');
-    
+
     let targetTab;
-    
+
     if (currentUrl === targetUrl) {
       addLog('✓ 检测到当前页面就是目标网址，直接在当前页面测试', 'success');
       targetTab = activeTab;
@@ -531,16 +531,16 @@ async function startAutoTest() {
         chrome.tabs.create({ url: url }, (tab) => resolve(tab));
       });
     }
-    
+
     currentTab = targetTab;
-    
+
     const needWait = (currentUrl !== targetUrl);
     const waitTime = needWait ? 3000 : 1000;
-    
+
     if (needWait) {
       addLog('等待页面加载...', 'info');
     }
-    
+
     // 初始化测试数据
     chrome.storage.local.set({
       testData: {
@@ -553,7 +553,7 @@ async function startAutoTest() {
         config: config
       }
     });
-    
+
     // 等待后开始测试
     setTimeout(() => {
       addLog('🔍 步骤 1/3: 分析页面结构...', 'info');
@@ -563,7 +563,7 @@ async function startAutoTest() {
       }).then((analysisResponse) => {
         if (analysisResponse && analysisResponse.success) {
           addLog('✓ 页面分析完成，检测到 ' + analysisResponse.elementCount + ' 个可交互元素', 'success');
-          
+
           addLog('📋 步骤 2/3: 生成智能测试计划...', 'info');
           chrome.tabs.sendMessage(currentTab.id, {
             action: 'generateTestPlan',
@@ -572,7 +572,7 @@ async function startAutoTest() {
           }).then((planResponse) => {
             if (planResponse && planResponse.success) {
               addLog('✓ 测试计划已生成，共 ' + planResponse.stepCount + ' 个测试步骤', 'success');
-              
+
               addLog('▶️ 步骤 3/3: 执行自动化测试...', 'info');
               chrome.tabs.sendMessage(currentTab.id, {
                 action: 'startTest',
@@ -581,11 +581,11 @@ async function startAutoTest() {
               }).then((response) => {
                 if (response && response.success) {
                   addLog('✓ 测试命令已发送', 'success');
-                  
+
                   chrome.tabs.sendMessage(currentTab.id, {
                     action: 'showFloatingBall'
-                  }).catch(() => {});
-                  
+                  }).catch(() => { });
+
                   chrome.storage.local.set({
                     testingState: {
                       inProgress: true,
@@ -593,7 +593,7 @@ async function startAutoTest() {
                       startTime: new Date().toISOString()
                     }
                   });
-                  
+
                   isFloatingBallMode = true;
                 }
               }).catch((error) => {
@@ -623,11 +623,11 @@ async function startAutoTest() {
 /**
  * 开始自定义测试
  */
-async function startCustomTest() {
+async function startCustomTest () {
   addLog('🚀 正在启动自定义测试...', 'info');
   addLog(`📋 测试套件: ${uploadedTestCases.testName}`, 'info');
   addLog(`🎯 目标URL: ${uploadedTestCases.targetUrl}`, 'info');
-  
+
   testingInProgress = true;
   startTestBtn.disabled = true;
   stopTestBtn.disabled = false;
@@ -647,7 +647,7 @@ async function startCustomTest() {
       <div id="logContainer" class="log-container"></div>
     </div>
   `;
-  
+
   // 重新获取元素引用
   testedCount = document.getElementById('testedCount');
   successCount = document.getElementById('successCount');
@@ -655,14 +655,14 @@ async function startCustomTest() {
   apiErrorCount = document.getElementById('apiErrorCount');
   progressBar = document.getElementById('progressBar');
   logContainer = document.getElementById('logContainer');
-  
+
   // 打开或导航到目标网址
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const activeTab = tabs[0];
     const targetUrl = uploadedTestCases.targetUrl;
-    
+
     let targetTab;
-    
+
     if (activeTab.url === targetUrl || activeTab.url.startsWith(targetUrl)) {
       addLog('✓ 在当前标签页执行测试', 'success');
       targetTab = activeTab;
@@ -672,9 +672,9 @@ async function startCustomTest() {
         chrome.tabs.create({ url: targetUrl }, (tab) => resolve(tab));
       });
     }
-    
+
     currentTab = targetTab;
-    
+
     // 保存测试用例到storage，等待content-script读取
     chrome.storage.local.set({
       customTestCases: uploadedTestCases,
@@ -687,23 +687,23 @@ async function startCustomTest() {
         failedSteps: 0
       }
     });
-    
+
     // 等待页面加载
     setTimeout(() => {
       addLog('▶️ 开始执行自定义测试用例...', 'info');
-      
+
       chrome.tabs.sendMessage(currentTab.id, {
         action: 'executeCustomTestCases',
         testCases: uploadedTestCases
       }).then((response) => {
         if (response && response.success) {
           addLog('✓ 测试执行命令已发送', 'success');
-          
+
           // 使用延迟和重试机制确保悬浮球显示
           let retries = 0;
           const maxRetries = 5;
           const retryInterval = 300; // 300ms间隔
-          
+
           const sendShowBallMessage = () => {
             chrome.tabs.sendMessage(currentTab.id, {
               action: 'showFloatingBall'
@@ -719,7 +719,7 @@ async function startCustomTest() {
               }
             });
           };
-          
+
           // 首次发送延迟200ms，确保页面内容脚本已就绪
           setTimeout(sendShowBallMessage, 200);
         }
@@ -739,14 +739,14 @@ async function startCustomTest() {
 
 stopTestBtn.addEventListener('click', () => {
   if (!currentTab) return;
-  
-  chrome.tabs.sendMessage(currentTab.id, { action: 'stopTest' }).catch(() => {});
-  
+
+  chrome.tabs.sendMessage(currentTab.id, { action: 'stopTest' }).catch(() => { });
+
   testingInProgress = false;
   startTestBtn.disabled = false;
   stopTestBtn.disabled = true;
   addLog('⏹️ 测试已停止', 'warning');
-  
+
   chrome.storage.local.set({ testingState: { inProgress: false } });
 });
 
@@ -764,7 +764,7 @@ viewReportBtn.addEventListener('click', () => {
 
 settingsBtn.addEventListener('click', () => {
   qwenModal.style.display = 'flex';
-  
+
   chrome.storage.local.get(['qwenApiKey', 'qwenEnabled'], (result) => {
     if (result.qwenApiKey) {
       qwenApiKeyInput.value = result.qwenApiKey;
@@ -782,24 +782,24 @@ closeQwenModal.addEventListener('click', () => {
 saveQwenBtn.addEventListener('click', () => {
   const apiKey = qwenApiKeyInput.value.trim();
   const enabled = qwenEnabled.checked;
-  
+
   if (!apiKey) {
     alert('❌ 请输入 API 密钥');
     return;
   }
-  
+
   chrome.storage.local.set({
     qwenApiKey: apiKey,
     qwenEnabled: enabled
   });
-  
+
   alert('✅ 配置已保存');
   qwenModal.style.display = 'none';
 });
 
 testQwenBtn.addEventListener('click', async () => {
   const apiKey = qwenApiKeyInput.value.trim();
-  
+
   if (!apiKey) {
     qwenTestResult.style.display = 'block';
     qwenTestResult.textContent = '❌ 请先输入 API 密钥';
@@ -807,12 +807,12 @@ testQwenBtn.addEventListener('click', async () => {
     qwenTestResult.style.color = '#721c24';
     return;
   }
-  
+
   qwenTestResult.style.display = 'block';
   qwenTestResult.textContent = '⏳ 正在测试连接...';
   qwenTestResult.style.background = '#fff3cd';
   qwenTestResult.style.color = '#856404';
-  
+
   // 这里可以添加实际的连接测试逻辑
   setTimeout(() => {
     qwenTestResult.textContent = '✅ 连接成功';
@@ -825,11 +825,11 @@ testQwenBtn.addEventListener('click', async () => {
 // 日志记录函数
 // =============================================
 
-function addLog(message, type = 'info') {
+function addLog (message, type = 'info') {
   console.log(`[Popup] ${message}`);
-  
+
   if (!logContainer) return;
-  
+
   const logEntry = document.createElement('div');
   logEntry.className = `log-entry log-${type}`;
   logEntry.style.padding = '8px';
@@ -837,7 +837,7 @@ function addLog(message, type = 'info') {
   logEntry.style.borderRadius = '4px';
   logEntry.style.fontSize = '12px';
   logEntry.style.wordBreak = 'break-all';
-  
+
   switch (type) {
     case 'success':
       logEntry.style.background = '#d4edda';
@@ -855,10 +855,10 @@ function addLog(message, type = 'info') {
       logEntry.style.background = '#e2e3e5';
       logEntry.style.color = '#383d41';
   }
-  
+
   logEntry.textContent = message;
   logContainer.appendChild(logEntry);
-  
+
   // 自动滚动到底部
   logContainer.parentElement.scrollTop = logContainer.parentElement.scrollHeight;
 }
@@ -875,7 +875,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       successCount.textContent = request.successCount || 0;
       failureCount.textContent = request.failureCount || 0;
       apiErrorCount.textContent = request.apiErrorCount || 0;
-      
+
       if (request.progress) {
         progressBar.style.width = request.progress + '%';
       }
@@ -889,9 +889,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     startTestBtn.disabled = false;
     stopTestBtn.disabled = true;
     viewReportBtn.disabled = false;
-    
+
     addLog('✅ 测试已完成', 'success');
-    
+
     chrome.storage.local.set({ testingState: { inProgress: false } });
   }
 });
