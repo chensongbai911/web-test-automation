@@ -69,21 +69,32 @@ class CustomTestExecutor {
       // 发送进度更新给popup和悬浮球
       this.sendProgressUpdate();
 
-      // 同时更新悬浮球面板
-      if (window.floatingBallManager) {
-        window.floatingBallManager.updateProgress({
-          current: this.results.testCases.length,
-          total: this.results.stats.totalCases,
-          passedCases: this.results.stats.passedCases,
-          failedCases: this.results.stats.failedCases,
-          totalSteps: this.results.stats.totalSteps,
-          passedSteps: this.results.stats.passedSteps,
-          failedSteps: this.results.stats.failedSteps
-        });
-      }
+      // 🔧 通过window事件更新悬浮球（支持页面主上下文）
+      window.dispatchEvent(new CustomEvent('floatingBallMessage', {
+        detail: {
+          action: 'updateFloatingProgress',
+          data: {
+            current: this.results.testCases.length,
+            total: this.results.stats.totalCases,
+            passedCases: this.results.stats.passedCases,
+            failedCases: this.results.stats.failedCases,
+            totalSteps: this.results.stats.totalSteps,
+            passedSteps: this.results.stats.passedSteps,
+            failedSteps: this.results.stats.failedSteps
+          }
+        }
+      }));
     }
 
     this.results.stats.endTime = new Date().toISOString();
+    
+    // 🔧 通知悬浮球测试完成
+    window.dispatchEvent(new CustomEvent('floatingBallMessage', {
+      detail: {
+        action: 'testComplete'
+      }
+    }));
+    
     return this.results;
   }
 
@@ -538,13 +549,30 @@ class CustomTestExecutor {
     const stats = this.results.stats;
     const totalProgress = Math.round((stats.totalSteps / Math.max(1, stats.totalCases * 5)) * 100);
 
-    if (window.floatingBallManager) {
-      window.floatingBallManager.addLog(
-        `${stepResult.status === 'passed' ? '✓' : '❌'} 步骤 ${stepResult.description} ${stepResult.status}`,
-        stepResult.status === 'passed' ? 'success' : 'error'
-      );
-    }
+    // 🔧 直接通过window事件更新悬浮球（支持页面主上下文）
+    window.dispatchEvent(new CustomEvent('floatingBallMessage', {
+      detail: {
+        action: 'updateFloatingProgress',
+        data: {
+          totalCases: stats.totalCases,
+          passedCases: stats.passedCases,
+          failedCases: stats.failedCases,
+          current: stats.totalSteps,
+          progress: Math.min(100, totalProgress)
+        }
+      }
+    }));
+    
+    // 添加日志
+    window.dispatchEvent(new CustomEvent('floatingBallMessage', {
+      detail: {
+        action: 'addFloatingLog',
+        message: `${stepResult.status === 'passed' ? '✓' : '❌'} 步骤 ${stepResult.description} ${stepResult.status}`,
+        type: stepResult.status === 'passed' ? 'success' : 'error'
+      }
+    }));
 
+    // 同时发送chrome消息给popup
     chrome.runtime.sendMessage({
       action: 'updateTestStats',
       testedCount: stats.totalSteps,

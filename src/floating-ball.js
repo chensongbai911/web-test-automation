@@ -401,42 +401,42 @@
       }
     }
 
-    showBall() {
+    showBall () {
       const container = document.getElementById('floating-ball-container');
-    if (container) {
-      container.style.display = 'block';
-      this.isVisible = true;
-      console.log('[FloatingBall] ✅ 悬浮球已显示');
-    } else {
-      console.warn('[FloatingBall] ⚠️  悬浮球容器不存在，尝试重新注入');
-      try {
-        this.injectFloatingBall();
-        const newContainer = document.getElementById('floating-ball-container');
-        if (newContainer) {
-          newContainer.style.display = 'block';
-          this.isVisible = true;
-          console.log('[FloatingBall] ✅ 悬浮球重新注入并显示成功');
-        } else {
-          console.error('[FloatingBall] ❌ 悬浮球重新注入后仍然找不到容器');
+      if (container) {
+        container.style.display = 'block';
+        this.isVisible = true;
+        console.log('[FloatingBall] ✅ 悬浮球已显示');
+      } else {
+        console.warn('[FloatingBall] ⚠️  悬浮球容器不存在，尝试重新注入');
+        try {
+          this.injectFloatingBall();
+          const newContainer = document.getElementById('floating-ball-container');
+          if (newContainer) {
+            newContainer.style.display = 'block';
+            this.isVisible = true;
+            console.log('[FloatingBall] ✅ 悬浮球重新注入并显示成功');
+          } else {
+            console.error('[FloatingBall] ❌ 悬浮球重新注入后仍然找不到容器');
+          }
+        } catch (error) {
+          console.error('[FloatingBall] ❌ 悬浮球重新注入失败:', error);
         }
-      } catch (error) {
-        console.error('[FloatingBall] ❌ 悬浮球重新注入失败:', error);
+      }
+    }
+
+    hideBall () {
+      const container = document.getElementById('floating-ball-container');
+      if (container) {
+        container.style.display = 'none';
+        this.isVisible = false;
       }
     }
   }
-
-  hideBall() {
-    const container = document.getElementById('floating-ball-container');
-    if (container) {
-      container.style.display = 'none';
-      this.isVisible = false;
-    }
-  }
-}
   window.FloatingBallManager = FloatingBallManager;
 
-    // 页面加载时初始化
-    if (document.readyState === 'loading') {
+  // 页面加载时初始化
+  if (document.readyState === 'loading') {
     console.log('[FloatingBall] 页面正在加载，等待DOMContentLoaded...');
     document.addEventListener('DOMContentLoaded', () => {
       try {
