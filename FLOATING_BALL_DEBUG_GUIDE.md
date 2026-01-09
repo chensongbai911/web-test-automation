@@ -1,7 +1,7 @@
 # 悬浮球不显示问题排查指南
 
-**版本**: v2.0.2  
-**更新日期**: 2026-01-10  
+**版本**: v2.0.2
+**更新日期**: 2026-01-10
 **问题**: 点击测试按钮后悬浮球不出现，控制台有报错
 
 ---
@@ -45,7 +45,7 @@
 // 情况1: 初始化失败
 [FloatingBall] ❌ FloatingBallManager初始化失败: Error: ...
 
-// 情况2: 容器注入失败  
+// 情况2: 容器注入失败
 [FloatingBall] ⚠️ 悬浮球容器不存在，尝试重新注入
 [FloatingBall] ❌ 悬浮球重新注入后仍然找不到容器
 
@@ -64,7 +64,7 @@
 b0c0a03.js:4 parseImageXUrl "tplv-k3u1fbpfcp-..." parse error
 ```
 
-**原因**: 
+**原因**:
 - 这是**目标网站**的JavaScript错误
 - **不是测试工具的问题**
 - 系统已自动过滤此类错误
@@ -199,7 +199,7 @@ Uncaught (in promise) TypeError: ...
 [Web测试工具] 扩展Promise错误（需要处理）: ...
 ```
 
-**原因**: 
+**原因**:
 - 这是扩展自身的Promise错误
 - **需要处理**，不应该被忽略
 
@@ -302,14 +302,14 @@ getEventListeners(document).DOMContentLoaded
 // 完整模拟测试启动
 (async () => {
   console.log('=== 开始模拟测试 ===');
-  
+
   // 1. 检查Manager
   if (!window.floatingBallManager) {
     console.error('❌ FloatingBallManager不存在');
     return;
   }
   console.log('✅ FloatingBallManager存在');
-  
+
   // 2. 检查容器
   const container = document.getElementById('floating-ball-container');
   if (!container) {
@@ -317,17 +317,17 @@ getEventListeners(document).DOMContentLoaded
     return;
   }
   console.log('✅ 容器存在');
-  
+
   // 3. 显示悬浮球
   window.floatingBallManager.showBall();
   console.log('✅ 调用showBall()');
-  
+
   // 4. 验证可见性
   setTimeout(() => {
     const isVisible = container.style.display === 'block';
     console.log(isVisible ? '✅ 悬浮球可见' : '❌ 悬浮球不可见');
   }, 100);
-  
+
   console.log('=== 模拟测试完成 ===');
 })();
 ```
@@ -422,12 +422,12 @@ window.checkTestReady = () => {
     'TestCaseParser': !!window.TestCaseParser,
     'Container': !!document.getElementById('floating-ball-container'),
   };
-  
+
   console.table(checks);
-  
+
   const allReady = Object.values(checks).every(v => v);
   console.log(allReady ? '✅ 所有组件就绪' : '❌ 部分组件未就绪');
-  
+
   return allReady;
 };
 
@@ -445,6 +445,6 @@ checkTestReady();
 
 ---
 
-**版本**: v2.0.2  
-**状态**: ✅ 生产就绪  
+**版本**: v2.0.2
+**状态**: ✅ 生产就绪
 **最后更新**: 2026-01-10

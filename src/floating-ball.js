@@ -1,5 +1,9 @@
 // 悬浮球和进度面板管理脚本
 
+// 🔧 通过脚本注入的方式将代码注入到页面主上下文（避免Content Script上下文隔离）
+(function() {
+  'use strict';
+
 class FloatingBallManager {
   constructor() {
     this.isVisible = false;
@@ -425,3 +429,5 @@ if (document.readyState === 'loading') {
     throw error;
   }
 }
+
+})(); // 结束立即执行函数
