@@ -38,12 +38,18 @@
         "src/form-autofiller.js",
         "src/form-handlers.js",
         "src/filter-handlers.js",
-        "src/floating-ball.js",
+        "src/floating-ball-injector.js",
         "src/content-script.js"
       ],
       "css": ["src/floating-ball.css"],
       "run_at": "document_start",
       "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/floating-ball.js"],
+      "matches": ["<all_urls>"]
     }
   ],
   "icons": {
