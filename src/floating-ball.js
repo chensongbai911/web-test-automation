@@ -195,7 +195,7 @@ class FloatingBallManager {
     // 支持两种数据格式：
     // 1. 旧格式: { total, tested, success, failed, apiError }
     // 2. 新格式: { totalCases, passedCases, failedCases, totalSteps, passedSteps, failedSteps, current }
-    
+
     if (data.totalCases !== undefined) {
       // 新格式（来自CustomTestExecutor）
       this.testStats = {

@@ -30,7 +30,7 @@ window.addEventListener('unhandledrejection', (event) => {
   // 检查错误堆栈，判断是否来自扩展
   const stack = event.reason?.stack || '';
   const isExtensionError = stack.includes('chrome-extension://');
-  
+
   if (!isExtensionError) {
     // 第三方Promise错误，记录并忽略
     console.warn('[Web测试工具] 检测到页面Promise错误（已忽略）:', event.reason);
