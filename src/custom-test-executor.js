@@ -66,8 +66,21 @@ class CustomTestExecutor {
       caseResult.endTime = new Date().toISOString();
       this.results.testCases.push(caseResult);
 
-      // 发送进度更新
+      // 发送进度更新给popup和悬浮球
       this.sendProgressUpdate();
+      
+      // 同时更新悬浮球面板
+      if (window.floatingBallManager) {
+        window.floatingBallManager.updateProgress({
+          current: this.results.testCases.length,
+          total: this.results.stats.totalCases,
+          passedCases: this.results.stats.passedCases,
+          failedCases: this.results.stats.failedCases,
+          totalSteps: this.results.stats.totalSteps,
+          passedSteps: this.results.stats.passedSteps,
+          failedSteps: this.results.stats.failedSteps
+        });
+      }
     }
 
     this.results.stats.endTime = new Date().toISOString();
@@ -114,6 +127,9 @@ class CustomTestExecutor {
       this.results.testCases[this.results.testCases.length - 1].steps.push(stepResult);
 
       this.results.stats.totalSteps++;
+      
+      // 每个步骤完成后也发送进度更新
+      this.sendStepProgressUpdate(stepResult);
     }
   }
 
@@ -452,6 +468,32 @@ class CustomTestExecutor {
       failureCount: stats.failedCases,
       apiErrorCount: stats.failedSteps,
       progress: progress
+    }).catch(() => {
+      // popup可能已关闭
+    });
+  }
+
+  /**
+   * 发送步骤进度更新
+   */
+  sendStepProgressUpdate (stepResult) {
+    const stats = this.results.stats;
+    const totalProgress = Math.round((stats.totalSteps / Math.max(1, stats.totalCases * 5)) * 100);
+
+    if (window.floatingBallManager) {
+      window.floatingBallManager.addLog(
+        `${stepResult.status === 'passed' ? '✓' : '❌'} 步骤 ${stepResult.description} ${stepResult.status}`,
+        stepResult.status === 'passed' ? 'success' : 'error'
+      );
+    }
+
+    chrome.runtime.sendMessage({
+      action: 'updateTestStats',
+      testedCount: stats.totalSteps,
+      successCount: stats.passedSteps,
+      failureCount: stats.failedSteps,
+      progress: Math.min(100, totalProgress),
+      step: stepResult.description
     }).catch(() => {
       // popup可能已关闭
     });

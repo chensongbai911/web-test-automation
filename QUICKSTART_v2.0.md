@@ -3,7 +3,7 @@
 ## ✅ 问题已解决！
 
 **Manifest错误已修复** ✨
-- 问题：`Manifest is not valid JSON` 
+- 问题：`Manifest is not valid JSON`
 - 原因：description 字段缺失闭合引号
 - 状态：✅ 已修复，可以正常加载
 
@@ -137,7 +137,7 @@ Chrome → 菜单 → 更多工具 → 扩展程序
 ## ✅ 常见问题速解
 
 ### ❓ Q: 扩展加载失败怎么办？
-**A:** 
+**A:**
 ```
 1. 检查 chrome://extensions/ 有无错误信息
 2. 运行: bash deployment-check.sh (检查文件)

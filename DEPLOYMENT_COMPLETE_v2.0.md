@@ -4,7 +4,7 @@
 
 ### 已解决的问题
 
-1. **✅ manifest.json JSON格式错误** 
+1. **✅ manifest.json JSON格式错误**
    - 问题：第5行description字段缺少闭合引号
    - 解决：已添加缺失的引号
    - 状态：已验证，格式正确
@@ -343,7 +343,7 @@ popup.js 接收 content-script 的消息
 - false: 继续执行后续步骤
 
 ### Q4: 如何调试测试用例？
-**A:** 
+**A:**
 1. 打开浏览器开发者工具 (F12)
 2. 查看 Console 标签
 3. 搜索 `[CustomTestExecutor]` 日志

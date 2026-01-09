@@ -698,9 +698,30 @@ async function startCustomTest() {
       }).then((response) => {
         if (response && response.success) {
           addLog('✓ 测试执行命令已发送', 'success');
-          chrome.tabs.sendMessage(currentTab.id, {
-            action: 'showFloatingBall'
-          }).catch(() => {});
+          
+          // 使用延迟和重试机制确保悬浮球显示
+          let retries = 0;
+          const maxRetries = 5;
+          const retryInterval = 300; // 300ms间隔
+          
+          const sendShowBallMessage = () => {
+            chrome.tabs.sendMessage(currentTab.id, {
+              action: 'showFloatingBall'
+            }).then(() => {
+              addLog('✓ 悬浮球已显示', 'success');
+            }).catch((error) => {
+              retries++;
+              if (retries < maxRetries) {
+                console.log(`[Popup] showFloatingBall 重试 ${retries}/${maxRetries}...`);
+                setTimeout(sendShowBallMessage, retryInterval);
+              } else {
+                console.warn('[Popup] showFloatingBall 重试次数已达上限');
+              }
+            });
+          };
+          
+          // 首次发送延迟200ms，确保页面内容脚本已就绪
+          setTimeout(sendShowBallMessage, 200);
         }
       }).catch((error) => {
         addLog('❌ 测试执行失败: ' + error.message, 'error');

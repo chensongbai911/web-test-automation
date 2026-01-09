@@ -283,6 +283,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 🆕 执行自定义测试用例
     console.log('[Web测试工具] 开始执行自定义测试用例...');
 
+    // 立即显示悬浮球
+    if (window.floatingBallManager) {
+      console.log('[Web测试工具] 显示悬浮球...');
+      window.floatingBallManager.showBall();
+    } else {
+      console.log('[Web测试工具] ⚠️  FloatingBallManager 尚未初始化，等待初始化...');
+      // 等待FloatingBallManager初始化
+      let retries = 0;
+      const waitForManager = setInterval(() => {
+        if (window.floatingBallManager) {
+          console.log('[Web测试工具] FloatingBallManager 已初始化，显示悬浮球');
+          window.floatingBallManager.showBall();
+          clearInterval(waitForManager);
+        }
+        retries++;
+        if (retries > 20) { // 最多等2秒
+          console.warn('[Web测试工具] ⚠️  FloatingBallManager 初始化超时');
+          clearInterval(waitForManager);
+        }
+      }, 100);
+    }
+
     (async () => {
       try {
         const testCases = request.testCases;

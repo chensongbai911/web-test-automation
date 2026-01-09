@@ -14,6 +14,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       action: 'updateStatus',
       data: request.data
     }).catch(() => { });
+  } else if (request.action === 'updateTestStats') {
+    // 转发测试统计消息给popup
+    console.log('Background forwarding updateTestStats:', request);
+    chrome.runtime.sendMessage({
+      action: 'updateTestStats',
+      testedCount: request.testedCount,
+      successCount: request.successCount,
+      failureCount: request.failureCount,
+      apiErrorCount: request.apiErrorCount,
+      progress: request.progress,
+      step: request.step
+    }).catch(() => { });
   } else if (request.action === 'addLog') {
     // 转发日志消息给popup
     console.log('Background forwarding addLog:', request.message);
