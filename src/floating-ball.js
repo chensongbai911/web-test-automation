@@ -37,10 +37,11 @@
         return;
       }
 
-      // 创建容器
+      // 创建容器（初始状态：隐藏）
       const container = document.createElement('div');
       container.id = 'floating-ball-container';
       container.className = 'floating-ball-container';
+      container.style.display = 'none'; // 🔧 初始状态隐藏，等待测试开始时显示
       container.innerHTML = `
       <!-- 悬浮球 -->
       <div class="floating-ball" id="floating-ball">

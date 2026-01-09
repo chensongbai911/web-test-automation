@@ -87,14 +87,14 @@ class CustomTestExecutor {
     }
 
     this.results.stats.endTime = new Date().toISOString();
-    
+
     // 🔧 通知悬浮球测试完成
     window.dispatchEvent(new CustomEvent('floatingBallMessage', {
       detail: {
         action: 'testComplete'
       }
     }));
-    
+
     return this.results;
   }
 
@@ -562,7 +562,7 @@ class CustomTestExecutor {
         }
       }
     }));
-    
+
     // 添加日志
     window.dispatchEvent(new CustomEvent('floatingBallMessage', {
       detail: {
