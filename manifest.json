@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Web功能自动化测试工具",
+  "version": "1.7.0",
+  "description": "AI深度赋能自动化测试 - 智能策略生成、异常自愈、复杂场景理解",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "webRequest",
+    "tabs",
+    "storage",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "AI智能测试工具"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "src/qwen-integration.js",
+        "src/ai-test-orchestrator.js",
+        "src/enhanced-test-reporter.js",
+        "src/ai-form-analyzer.js",
+        "src/complex-form-handler.js",
+        "src/form-autofiller.js",
+        "src/form-handlers.js",
+        "src/filter-handlers.js",
+        "src/floating-ball.js",
+        "src/content-script.js"
+      ],
+      "css": ["src/floating-ball.css"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "images/icon-16.png",
+    "48": "images/icon-48.png",
+    "128": "images/icon-128.png"
+  }
+}

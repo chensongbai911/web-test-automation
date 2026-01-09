@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web测试工具 - 设置</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 600px;
+        width: 100%;
+        padding: 40px;
+      }
+
+      .header {
+        margin-bottom: 30px;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 20px;
+      }
+
+      .header h1 {
+        font-size: 28px;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .setting-group {
+        margin-bottom: 30px;
+      }
+
+      .setting-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .setting-group .description {
+        display: block;
+        font-size: 13px;
+        color: #999;
+        margin-bottom: 10px;
+      }
+
+      .setting-group input[type="password"],
+      .setting-group input[type="text"],
+      .setting-group select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        font-family: monospace;
+        transition: border-color 0.3s;
+      }
+
+      .setting-group input[type="password"]:focus,
+      .setting-group input[type="text"]:focus,
+      .setting-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .setting-group .input-group {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+
+      .setting-group .input-group input {
+        flex: 1;
+      }
+
+      .setting-group .input-group button {
+        padding: 12px 20px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.3s;
+      }
+
+      .setting-group .input-group button:hover {
+        background: #5568d3;
+      }
+
+      .status {
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-size: 13px;
+        display: none;
+      }
+
+      .status.success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border: 1px solid #81c784;
+        display: block;
+      }
+
+      .status.error {
+        background: #ffebee;
+        color: #c62828;
+        border: 1px solid #ef5350;
+        display: block;
+      }
+
+      .status.info {
+        background: #e3f2fd;
+        color: #1565c0;
+        border: 1px solid #64b5f6;
+        display: block;
+      }
+
+      .features {
+        margin-top: 40px;
+        padding-top: 30px;
+        border-top: 1px solid #eee;
+      }
+
+      .features h2 {
+        font-size: 18px;
+        color: #333;
+        margin-bottom: 20px;
+      }
+
+      .feature-list {
+        list-style: none;
+      }
+
+      .feature-list li {
+        padding: 10px 0;
+        color: #666;
+        font-size: 14px;
+        padding-left: 30px;
+        position: relative;
+      }
+
+      .feature-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #667eea;
+        font-weight: bold;
+      }
+
+      .buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+      }
+
+      .btn {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5568d3;
+      }
+
+      .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+      }
+
+      .btn-secondary:hover {
+        background: #e0e0e0;
+      }
+
+      .warning-box {
+        background: #fff3e0;
+        border: 1px solid #ffb74d;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #e65100;
+      }
+
+      .warning-box strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      code {
+        background: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔧 Web测试工具设置</h1>
+        <p>配置通义千问(Qwen3-max)集成，启用AI智能化功能</p>
+      </div>
+
+      <!-- Qwen API 设置 -->
+      <div class="setting-group">
+        <label>通义千问(Qwen3-max) API 密钥</label>
+        <div class="description">
+          从阿里云控制台获取
+          <a
+            href="https://dashscope.aliyun.com/"
+            target="_blank"
+            style="color: #667eea"
+          >
+            申请API密钥 →
+          </a>
+        </div>
+
+        <div class="warning-box">
+          <strong>⚠️ 安全提示</strong>
+          API密钥将保存在浏览器本地存储中，不会发送到第三方服务器。
+        </div>
+
+        <div class="input-group">
+          <input
+            type="password"
+            id="qwenApiKey"
+            placeholder="sk-xxxxxx..."
+            autocomplete="off"
+          />
+          <button id="showKeyBtn">显示</button>
+        </div>
+        <div id="qwenStatus" class="status"></div>
+      </div>
+
+      <!-- 功能选项 -->
+      <div class="setting-group">
+        <label>启用的功能</label>
+
+        <div style="display: flex; align-items: center; margin-bottom: 10px">
+          <input type="checkbox" id="feature-pageAnalysis" checked disabled />
+          <label
+            for="feature-pageAnalysis"
+            style="margin: 0 0 0 10px; font-weight: 400"
+          >
+            ✓ 智能页面分析
+          </label>
+        </div>
+
+        <div style="display: flex; align-items: center; margin-bottom: 10px">
+          <input type="checkbox" id="feature-dataGeneration" checked disabled />
+          <label
+            for="feature-dataGeneration"
+            style="margin: 0 0 0 10px; font-weight: 400"
+          >
+            ✓ 智能数据生成
+          </label>
+        </div>
+
+        <div style="display: flex; align-items: center; margin-bottom: 10px">
+          <input type="checkbox" id="feature-errorRecovery" checked disabled />
+          <label
+            for="feature-errorRecovery"
+            style="margin: 0 0 0 10px; font-weight: 400"
+          >
+            ✓ 智能错误恢复
+          </label>
+        </div>
+
+        <div style="display: flex; align-items: center">
+          <input type="checkbox" id="feature-reporting" checked disabled />
+          <label
+            for="feature-reporting"
+            style="margin: 0 0 0 10px; font-weight: 400"
+          >
+            ✓ 智能报告生成
+          </label>
+        </div>
+      </div>
+
+      <!-- API 使用统计 -->
+      <div class="setting-group">
+        <label>API 使用情况（本月）</label>
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+          "
+        >
+          <div
+            style="
+              background: #f5f5f5;
+              padding: 15px;
+              border-radius: 5px;
+              text-align: center;
+            "
+          >
+            <div
+              style="font-size: 24px; font-weight: bold; color: #667eea"
+              id="apiCallCount"
+            >
+              0
+            </div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px">
+              API 调用次数
+            </div>
+          </div>
+          <div
+            style="
+              background: #f5f5f5;
+              padding: 15px;
+              border-radius: 5px;
+              text-align: center;
+            "
+          >
+            <div
+              style="font-size: 24px; font-weight: bold; color: #667eea"
+              id="apiCost"
+            >
+              ¥0.00
+            </div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px">
+              估计成本
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 功能说明 -->
+      <div class="features">
+        <h2>🎯 Qwen集成的功能</h2>
+        <ul class="feature-list">
+          <li><strong>智能页面分析</strong> - 自动理解页面结构和业务逻辑</li>
+          <li><strong>智能数据生成</strong> - 生成真实的上下文相关测试数据</li>
+          <li><strong>自适应错误恢复</strong> - 智能诊断错误并自动恢复</li>
+          <li><strong>动态选择器生成</strong> - 生成鲁棒的元素定位器</li>
+          <li><strong>自然语言支持</strong> - 用自然语言描述测试流程</li>
+          <li><strong>智能报告生成</strong> - 分析测试结果并生成建议</li>
+          <li><strong>业务流程理解</strong> - 理解复杂的业务逻辑</li>
+          <li><strong>性能分析</strong> - 评估页面性能和用户体验</li>
+        </ul>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="buttons">
+        <button class="btn btn-primary" id="testBtn">🧪 测试连接</button>
+        <button class="btn btn-primary" id="saveBtn">💾 保存设置</button>
+        <button class="btn btn-secondary" id="closeBtn">关闭</button>
+      </div>
+    </div>
+
+    <script src="qwen-integration.js"></script>
+    <script src="settings.js"></script>
+  </body>
+</html>

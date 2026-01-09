@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 智能测试计划生成器</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Microsoft YaHei", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .header {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .header h1 {
+        color: #667eea;
+        font-size: 32px;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        color: #666;
+        font-size: 16px;
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .panel {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .panel h2 {
+        color: #333;
+        font-size: 24px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .icon {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 8px;
+        font-size: 18px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        color: #555;
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .form-group input,
+      .form-group textarea,
+      .form-group select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+
+      .form-group input:focus,
+      .form-group textarea:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .form-group textarea {
+        resize: vertical;
+        min-height: 120px;
+        font-family: "Courier New", monospace;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .loading {
+        display: none;
+        margin-top: 20px;
+        text-align: center;
+        color: #667eea;
+        font-weight: 600;
+      }
+
+      .loading.active {
+        display: block;
+      }
+
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .result {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+      }
+
+      .result h3 {
+        color: #667eea;
+        margin-bottom: 15px;
+        font-size: 18px;
+      }
+
+      .test-step {
+        background: white;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      .test-step .step-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .step-number {
+        background: #667eea;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+      }
+
+      .step-title {
+        font-weight: 600;
+        color: #333;
+        flex: 1;
+      }
+
+      .priority-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .priority-high {
+        background: #fee;
+        color: #c00;
+      }
+
+      .priority-medium {
+        background: #fef3cd;
+        color: #856404;
+      }
+
+      .priority-low {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .step-details {
+        color: #666;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .step-details div {
+        margin-bottom: 8px;
+      }
+
+      .step-details strong {
+        color: #333;
+      }
+
+      .export-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .export-buttons button {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-download {
+        background: #28a745;
+        color: white;
+      }
+
+      .btn-copy {
+        background: #17a2b8;
+        color: white;
+      }
+
+      .btn-download:hover,
+      .btn-copy:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .alert {
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      .alert.show {
+        display: block;
+      }
+
+      .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .page-info {
+        background: #e7f3ff;
+        border-left: 4px solid #0066cc;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+      }
+
+      .page-info h4 {
+        color: #0066cc;
+        margin-bottom: 10px;
+        font-size: 16px;
+      }
+
+      .page-info p {
+        color: #666;
+        font-size: 14px;
+        margin: 5px 0;
+      }
+
+      .risk-warning {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 15px;
+      }
+
+      .risk-warning h4 {
+        color: #856404;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+
+      .risk-warning ul {
+        margin-left: 20px;
+        color: #666;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🤖 AI 智能测试计划生成器</h1>
+        <p>
+          利用 Qwen AI 模型自动分析页面并生成最优测试策略 -
+          避免重复测试，提高测试效率
+        </p>
+      </div>
+
+      <div class="content">
+        <!-- 左侧：输入面板 -->
+        <div class="panel">
+          <h2><span class="icon">📝</span> 页面信息</h2>
+
+          <div class="alert alert-success" id="successAlert"></div>
+          <div class="alert alert-error" id="errorAlert"></div>
+
+          <div class="form-group">
+            <label>Qwen API Key</label>
+            <input type="password" id="apiKey" placeholder="sk-xxxxxxxxxxxx" />
+          </div>
+
+          <div class="form-group">
+            <label>页面 URL</label>
+            <input
+              type="url"
+              id="pageUrl"
+              placeholder="https://example.com/page"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>页面标题</label>
+            <input type="text" id="pageTitle" placeholder="系统规则管理" />
+          </div>
+
+          <div class="form-group">
+            <label>页面类型</label>
+            <select id="pageType">
+              <option value="auto">自动识别</option>
+              <option value="form">表单提交页面</option>
+              <option value="list">列表管理页面</option>
+              <option value="dashboard">数据仪表盘</option>
+              <option value="workflow">审批流程页面</option>
+              <option value="search">查询检索页面</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>页面元素信息（JSON格式）</label>
+            <textarea
+              id="pageElements"
+              placeholder='{"forms": 1, "buttons": 5, "inputs": 8, "selects": 3}'
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>测试重点</label>
+            <textarea
+              id="testFocus"
+              placeholder="需要重点测试的功能，如：表单验证、数据保存、权限控制等"
+            ></textarea>
+          </div>
+
+          <button class="btn" id="generateBtn">
+            <span>🚀</span>
+            <span>生成智能测试计划</span>
+          </button>
+
+          <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>AI 正在分析页面并生成测试策略...</p>
+          </div>
+        </div>
+
+        <!-- 右侧：结果面板 -->
+        <div class="panel">
+          <h2><span class="icon">📊</span> 测试计划</h2>
+          <div class="result" id="result">
+            <div style="text-align: center; color: #999; padding: 60px 20px">
+              <div style="font-size: 48px; margin-bottom: 20px">📋</div>
+              <p>请填写左侧信息后点击"生成智能测试计划"</p>
+            </div>
+          </div>
+
+          <div class="export-buttons" id="exportButtons" style="display: none">
+            <button class="btn-download" id="downloadBtn">
+              📥 下载测试文档
+            </button>
+            <button class="btn-copy" id="copyBtn">📋 复制到剪贴板</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="qwen-integration.js"></script>
+    <script>
+      let testPlanData = null;
+      let qwen = null;
+
+      // 加载保存的 API Key
+      chrome.storage.local.get(["qwenApiKey"], (result) => {
+        if (result.qwenApiKey) {
+          document.getElementById("apiKey").value = result.qwenApiKey;
+        }
+      });
+
+      // 从当前标签页获取信息
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          document.getElementById("pageUrl").value = tabs[0].url;
+          document.getElementById("pageTitle").value = tabs[0].title;
+        }
+      });
+
+      // 生成测试计划
+      document
+        .getElementById("generateBtn")
+        .addEventListener("click", async () => {
+          const apiKey = document.getElementById("apiKey").value.trim();
+          const pageUrl = document.getElementById("pageUrl").value.trim();
+          const pageTitle = document.getElementById("pageTitle").value.trim();
+          const pageType = document.getElementById("pageType").value;
+          const pageElements = document
+            .getElementById("pageElements")
+            .value.trim();
+          const testFocus = document.getElementById("testFocus").value.trim();
+
+          if (!apiKey) {
+            showAlert("请输入 Qwen API Key", "error");
+            return;
+          }
+
+          if (!pageUrl || !pageTitle) {
+            showAlert("请填写页面 URL 和标题", "error");
+            return;
+          }
+
+          // 初始化 Qwen
+          if (!qwen) {
+            qwen = new QwenIntegration(apiKey);
+          }
+
+          // 解析页面元素
+          let elementsData = {};
+          if (pageElements) {
+            try {
+              elementsData = JSON.parse(pageElements);
+            } catch (e) {
+              showAlert("页面元素 JSON 格式错误", "error");
+              return;
+            }
+          }
+
+          // 显示加载状态
+          document.getElementById("generateBtn").disabled = true;
+          document.getElementById("loading").classList.add("active");
+          document.getElementById("result").innerHTML =
+            '<div style="text-align: center; color: #999; padding: 40px;"><p>AI 分析中...</p></div>';
+
+          try {
+            const prompt = `你是资深的自动化测试专家。请为以下页面生成详细的测试计划。
+
+**页面信息：**
+- URL: ${pageUrl}
+- 标题: ${pageTitle}
+- 页面类型: ${pageType === "auto" ? "请自动识别" : pageType}
+- 页面元素: ${JSON.stringify(elementsData)}
+- 测试重点: ${testFocus || "全面测试"}
+
+**要求：**
+1. 分析页面的业务场景和功能类型
+2. 生成结构化的测试步骤（不要重复测试相同功能）
+3. 为每个步骤标注优先级和风险等级
+4. 提供数据准备建议和预期结果
+5. 识别潜在的测试难点和风险
+
+**必须按照以下JSON格式返回（只返回JSON，不要其他内容）：**
+{
+  "pageAnalysis": {
+    "pageType": "识别的页面类型",
+    "businessScenario": "业务场景描述",
+    "complexity": "simple/moderate/complex",
+    "estimatedTime": "预计测试时长（分钟）"
+  },
+  "testSteps": [
+    {
+      "stepId": 1,
+      "action": "操作类型（如：填写表单/点击按钮/选择下拉等）",
+      "target": "目标元素描述",
+      "selector": "建议的CSS选择器",
+      "testData": "测试数据示例",
+      "priority": "high/medium/low",
+      "riskLevel": "high/medium/low",
+      "expectedResult": "预期结果",
+      "validationPoints": ["验证点1", "验证点2"],
+      "notes": "注意事项"
+    }
+  ],
+  "dataPreparation": {
+    "requiredData": ["需要准备的数据类型"],
+    "mockData": {
+      "字段名": "测试数据示例"
+    }
+  },
+  "potentialRisks": [
+    {
+      "risk": "风险描述",
+      "likelihood": "high/medium/low",
+      "mitigation": "缓解措施"
+    }
+  ],
+  "testingGuidelines": [
+    "测试指南1",
+    "测试指南2"
+  ]
+}`;
+
+            const response = await qwen.request(
+              [
+                {
+                  role: "user",
+                  content: prompt,
+                },
+              ],
+              {
+                temperature: 0.3,
+                max_tokens: 4000,
+              }
+            );
+
+            // 解析 AI 响应
+            testPlanData = parseAIResponse(response);
+
+            if (testPlanData) {
+              renderTestPlan(testPlanData);
+              showAlert("✅ 测试计划生成成功！", "success");
+              document.getElementById("exportButtons").style.display = "flex";
+            } else {
+              throw new Error("AI 返回格式错误");
+            }
+          } catch (error) {
+            console.error("生成失败:", error);
+            showAlert("生成失败: " + error.message, "error");
+            document.getElementById("result").innerHTML = `
+          <div style="text-align: center; color: #c00; padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+            <p>生成失败: ${error.message}</p>
+          </div>
+        `;
+          } finally {
+            document.getElementById("generateBtn").disabled = false;
+            document.getElementById("loading").classList.remove("active");
+          }
+        });
+
+      // 解析 AI 响应
+      function parseAIResponse(response) {
+        try {
+          // 提取 JSON
+          let content = response.trim();
+
+          // 移除可能的 markdown 代码块标记
+          content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+
+          // 查找 JSON 对象
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+
+          return JSON.parse(content);
+        } catch (e) {
+          console.error("解析 AI 响应失败:", e, response);
+          return null;
+        }
+      }
+
+      // 渲染测试计划
+      function renderTestPlan(plan) {
+        const resultDiv = document.getElementById("result");
+
+        let html = "";
+
+        // 页面分析
+        if (plan.pageAnalysis) {
+          html += `
+          <div class="page-info">
+            <h4>📊 页面分析</h4>
+            <p><strong>页面类型：</strong>${
+              plan.pageAnalysis.pageType || "未知"
+            }</p>
+            <p><strong>业务场景：</strong>${
+              plan.pageAnalysis.businessScenario || "未知"
+            }</p>
+            <p><strong>复杂度：</strong>${
+              plan.pageAnalysis.complexity || "moderate"
+            }</p>
+            <p><strong>预计时长：</strong>${
+              plan.pageAnalysis.estimatedTime || "5-10"
+            } 分钟</p>
+          </div>
+        `;
+        }
+
+        // 测试步骤
+        html += "<h3>🎯 测试步骤</h3>";
+
+        if (plan.testSteps && plan.testSteps.length > 0) {
+          plan.testSteps.forEach((step) => {
+            const priorityClass = `priority-${step.priority || "medium"}`;
+            const priorityText = {
+              high: "高优先级",
+              medium: "中优先级",
+              low: "低优先级",
+            }[step.priority || "medium"];
+
+            html += `
+            <div class="test-step">
+              <div class="step-header">
+                <div class="step-number">${step.stepId}</div>
+                <div class="step-title">${step.action}</div>
+                <span class="priority-badge ${priorityClass}">${priorityText}</span>
+              </div>
+              <div class="step-details">
+                <div><strong>目标：</strong>${step.target}</div>
+                ${
+                  step.selector
+                    ? `<div><strong>选择器：</strong><code>${step.selector}</code></div>`
+                    : ""
+                }
+                ${
+                  step.testData
+                    ? `<div><strong>测试数据：</strong>${step.testData}</div>`
+                    : ""
+                }
+                <div><strong>预期结果：</strong>${step.expectedResult}</div>
+                ${
+                  step.validationPoints && step.validationPoints.length > 0
+                    ? `
+                  <div><strong>验证点：</strong>
+                    <ul style="margin: 5px 0 0 20px;">
+                      ${step.validationPoints
+                        .map((v) => `<li>${v}</li>`)
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                    : ""
+                }
+                ${
+                  step.notes
+                    ? `<div><strong>注意：</strong>${step.notes}</div>`
+                    : ""
+                }
+              </div>
+            </div>
+          `;
+          });
+        }
+
+        // 数据准备
+        if (plan.dataPreparation) {
+          html += `
+          <div style="background: #f0f8ff; border-left: 4px solid #0066cc; padding: 15px; border-radius: 6px; margin-top: 15px;">
+            <h4 style="color: #0066cc; margin-bottom: 10px; font-size: 14px;">📦 数据准备</h4>
+            ${
+              plan.dataPreparation.requiredData
+                ? `
+              <p style="margin: 5px 0;"><strong>需要数据：</strong>${plan.dataPreparation.requiredData.join(
+                ", "
+              )}</p>
+            `
+                : ""
+            }
+            ${
+              plan.dataPreparation.mockData
+                ? `
+              <pre style="background: white; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 12px; overflow-x: auto;">${JSON.stringify(
+                plan.dataPreparation.mockData,
+                null,
+                2
+              )}</pre>
+            `
+                : ""
+            }
+          </div>
+        `;
+        }
+
+        // 潜在风险
+        if (plan.potentialRisks && plan.potentialRisks.length > 0) {
+          html += `
+          <div class="risk-warning">
+            <h4>⚠️ 潜在风险</h4>
+            <ul>
+              ${plan.potentialRisks
+                .map(
+                  (risk) => `
+                <li><strong>${risk.risk}</strong> - ${risk.mitigation}</li>
+              `
+                )
+                .join("")}
+            </ul>
+          </div>
+        `;
+        }
+
+        // 测试指南
+        if (plan.testingGuidelines && plan.testingGuidelines.length > 0) {
+          html += `
+          <div style="background: #f0fff0; border-left: 4px solid #28a745; padding: 15px; border-radius: 6px; margin-top: 15px;">
+            <h4 style="color: #28a745; margin-bottom: 10px; font-size: 14px;">💡 测试指南</h4>
+            <ul style="margin-left: 20px; color: #666; font-size: 13px;">
+              ${plan.testingGuidelines.map((g) => `<li>${g}</li>`).join("")}
+            </ul>
+          </div>
+        `;
+        }
+
+        resultDiv.innerHTML = html;
+      }
+
+      // 下载测试文档
+      document.getElementById("downloadBtn").addEventListener("click", () => {
+        if (!testPlanData) return;
+
+        const markdown = generateMarkdown(testPlanData);
+        const blob = new Blob([markdown], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `测试计划_${
+          document.getElementById("pageTitle").value
+        }_${Date.now()}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showAlert("✅ 测试文档已下载", "success");
+      });
+
+      // 复制到剪贴板
+      document.getElementById("copyBtn").addEventListener("click", () => {
+        if (!testPlanData) return;
+
+        const markdown = generateMarkdown(testPlanData);
+        navigator.clipboard.writeText(markdown).then(() => {
+          showAlert("✅ 已复制到剪贴板", "success");
+        });
+      });
+
+      // 生成 Markdown 文档
+      function generateMarkdown(plan) {
+        let md = `# 自动化测试计划\n\n`;
+        md += `**生成时间：** ${new Date().toLocaleString()}\n`;
+        md += `**页面URL：** ${document.getElementById("pageUrl").value}\n`;
+        md += `**页面标题：** ${
+          document.getElementById("pageTitle").value
+        }\n\n`;
+
+        if (plan.pageAnalysis) {
+          md += `## 📊 页面分析\n\n`;
+          md += `- **页面类型：** ${plan.pageAnalysis.pageType}\n`;
+          md += `- **业务场景：** ${plan.pageAnalysis.businessScenario}\n`;
+          md += `- **复杂度：** ${plan.pageAnalysis.complexity}\n`;
+          md += `- **预计时长：** ${plan.pageAnalysis.estimatedTime} 分钟\n\n`;
+        }
+
+        md += `## 🎯 测试步骤\n\n`;
+        if (plan.testSteps) {
+          plan.testSteps.forEach((step) => {
+            md += `### ${step.stepId}. ${step.action}\n\n`;
+            md += `- **目标元素：** ${step.target}\n`;
+            if (step.selector) md += `- **选择器：** \`${step.selector}\`\n`;
+            if (step.testData) md += `- **测试数据：** ${step.testData}\n`;
+            md += `- **优先级：** ${step.priority}\n`;
+            md += `- **风险等级：** ${step.riskLevel}\n`;
+            md += `- **预期结果：** ${step.expectedResult}\n`;
+
+            if (step.validationPoints && step.validationPoints.length > 0) {
+              md += `- **验证点：**\n`;
+              step.validationPoints.forEach((v) => (md += `  - ${v}\n`));
+            }
+
+            if (step.notes) md += `- **注意事项：** ${step.notes}\n`;
+            md += `\n`;
+          });
+        }
+
+        if (plan.dataPreparation) {
+          md += `## 📦 数据准备\n\n`;
+          if (plan.dataPreparation.requiredData) {
+            md += `**需要数据：** ${plan.dataPreparation.requiredData.join(
+              ", "
+            )}\n\n`;
+          }
+          if (plan.dataPreparation.mockData) {
+            md += `**模拟数据：**\n\n\`\`\`json\n${JSON.stringify(
+              plan.dataPreparation.mockData,
+              null,
+              2
+            )}\n\`\`\`\n\n`;
+          }
+        }
+
+        if (plan.potentialRisks && plan.potentialRisks.length > 0) {
+          md += `## ⚠️ 潜在风险\n\n`;
+          plan.potentialRisks.forEach((risk) => {
+            md += `- **${risk.risk}** (可能性: ${risk.likelihood})\n`;
+            md += `  - 缓解措施: ${risk.mitigation}\n`;
+          });
+          md += `\n`;
+        }
+
+        if (plan.testingGuidelines && plan.testingGuidelines.length > 0) {
+          md += `## 💡 测试指南\n\n`;
+          plan.testingGuidelines.forEach((g) => (md += `- ${g}\n`));
+        }
+
+        return md;
+      }
+
+      // 显示提示
+      function showAlert(message, type) {
+        const successAlert = document.getElementById("successAlert");
+        const errorAlert = document.getElementById("errorAlert");
+
+        successAlert.classList.remove("show");
+        errorAlert.classList.remove("show");
+
+        if (type === "success") {
+          successAlert.textContent = message;
+          successAlert.classList.add("show");
+          setTimeout(() => successAlert.classList.remove("show"), 3000);
+        } else {
+          errorAlert.textContent = message;
+          errorAlert.classList.add("show");
+          setTimeout(() => errorAlert.classList.remove("show"), 5000);
+        }
+      }
+    </script>
+  </body>
+</html>

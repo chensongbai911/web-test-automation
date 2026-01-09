@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web测试报告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="report.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>📊 Web功能自动化测试报告</h1>
+        <div class="report-info">
+          <p>测试地址: <span id="testUrl">-</span></p>
+          <p>测试时间: <span id="testTime">-</span></p>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- 统计概览 -->
+        <section class="section">
+          <h2>测试统计概览</h2>
+          <div class="stats-grid">
+            <div class="stat-card total">
+              <div class="stat-icon">📋</div>
+              <div class="stat-value" id="totalElements">0</div>
+              <div class="stat-label">测试元素总数</div>
+            </div>
+            <div class="stat-card success">
+              <div class="stat-icon">✓</div>
+              <div class="stat-value" id="successCount">0</div>
+              <div class="stat-label">测试成功</div>
+            </div>
+            <div class="stat-card failure">
+              <div class="stat-icon">✗</div>
+              <div class="stat-value" id="failureCount">0</div>
+              <div class="stat-label">测试失败</div>
+            </div>
+            <div class="stat-card error">
+              <div class="stat-icon">⚠</div>
+              <div class="stat-value" id="apiErrorCount">0</div>
+              <div class="stat-label">API错误</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 饼图 -->
+        <section class="section">
+          <h2>测试结果分布</h2>
+          <div class="chart-container">
+            <canvas id="pieChart"></canvas>
+          </div>
+        </section>
+
+        <!-- 柱状图 -->
+        <section class="section">
+          <h2>元素类型统计</h2>
+          <div class="chart-container">
+            <canvas id="barChart"></canvas>
+          </div>
+        </section>
+
+        <!-- API请求统计 -->
+        <section class="section">
+          <h2>API请求分析</h2>
+          <div class="api-stats">
+            <div class="api-stat-item">
+              <span class="label">总请求数:</span>
+              <span class="value" id="apiTotal">0</span>
+            </div>
+            <div class="api-stat-item">
+              <span class="label">成功 (200-299):</span>
+              <span class="value success" id="api2xx">0</span>
+            </div>
+            <div class="api-stat-item">
+              <span class="label">重定向 (300-399):</span>
+              <span class="value info" id="api3xx">0</span>
+            </div>
+            <div class="api-stat-item">
+              <span class="label">客户端错误 (400-499):</span>
+              <span class="value warning" id="api4xx">0</span>
+            </div>
+            <div class="api-stat-item">
+              <span class="label">服务器错误 (500-599):</span>
+              <span class="value error" id="api5xx">0</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 测试元素详情 -->
+        <section class="section">
+          <h2>测试元素详情</h2>
+          <div class="elements-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>类型</th>
+                  <th>文本/名称</th>
+                  <th>选择器</th>
+                </tr>
+              </thead>
+              <tbody id="elementsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- API请求详情 -->
+        <section class="section">
+          <h2>API请求详情</h2>
+          <div class="request-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>类型</th>
+                  <th>方法</th>
+                  <th>URL</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="requestTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 导出选项 -->
+        <section class="section">
+          <h2>导出选项</h2>
+          <div class="export-buttons">
+            <button class="btn btn-primary" onclick="exportToJSON()">
+              📥 导出JSON
+            </button>
+            <button class="btn btn-secondary" onclick="exportToCSV()">
+              📊 导出CSV
+            </button>
+            <button class="btn btn-info" onclick="printReport()">
+              🖨 打印报告
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <p>
+          © 2024 Web功能自动化测试工具 | 生成于 <span id="footerTime">-</span>
+        </p>
+      </footer>
+    </div>
+
+    <script src="report.js"></script>
+  </body>
+</html>

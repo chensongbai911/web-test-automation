@@ -1,0 +1,22 @@
+{
+  "name": "web-test-automation",
+  "version": "1.0.0",
+  "description": "Web功能自动化测试Chrome插件",
+  "keywords": [
+    "chrome-extension",
+    "testing",
+    "automation",
+    "web-testing",
+    "功能测试",
+    "自动化测试"
+  ],
+  "author": "Web Testing Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/web-test-automation"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

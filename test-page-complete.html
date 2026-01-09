@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web自动化测试 - 完整测试页面</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Microsoft YaHei", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        font-size: 1.2em;
+        opacity: 0.9;
+      }
+
+      .test-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .test-section h2 {
+        color: #667eea;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 10px;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+      }
+
+      button {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.3s;
+        font-weight: 500;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-success {
+        background: #52c41a;
+        color: white;
+      }
+
+      .btn-success:hover {
+        background: #73d13d;
+        transform: translateY(-2px);
+      }
+
+      .btn-danger {
+        background: #f5222d;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #ff4d4f;
+        transform: translateY(-2px);
+      }
+
+      .btn-warning {
+        background: #faad14;
+        color: white;
+      }
+
+      .btn-warning:hover {
+        background: #ffc53d;
+        transform: translateY(-2px);
+      }
+
+      .btn-info {
+        background: #1890ff;
+        color: white;
+      }
+
+      .btn-info:hover {
+        background: #40a9ff;
+        transform: translateY(-2px);
+      }
+
+      /* 表单样式 */
+      form {
+        margin-top: 20px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: border-color 0.3s;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+
+      /* 模态框样式 */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal.show {
+        display: flex;
+      }
+
+      .modal-dialog {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e0e0e0;
+      }
+
+      .modal-header h3 {
+        margin: 0;
+        color: #667eea;
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: #999;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        line-height: 1;
+      }
+
+      .modal-close:hover {
+        color: #333;
+      }
+
+      .modal-body {
+        margin-bottom: 20px;
+      }
+
+      .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      /* 链接样式 */
+      .link-list {
+        list-style: none;
+      }
+
+      .link-list li {
+        margin-bottom: 10px;
+      }
+
+      .link-list a {
+        color: #667eea;
+        text-decoration: none;
+        font-size: 16px;
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: all 0.3s;
+      }
+
+      .link-list a:hover {
+        background: #f0f0f0;
+        transform: translateX(5px);
+      }
+
+      /* 结果显示 */
+      .result {
+        margin-top: 15px;
+        padding: 15px;
+        border-radius: 8px;
+        background: #f6f8fa;
+        display: none;
+      }
+
+      .result.show {
+        display: block;
+      }
+
+      .result-success {
+        background: #e6f7ff;
+        color: #1890ff;
+        border-left: 4px solid #1890ff;
+      }
+
+      .result-error {
+        background: #fff1f0;
+        color: #f5222d;
+        border-left: 4px solid #f5222d;
+      }
+
+      /* 多步骤表单样式 */
+      .step-form {
+        position: relative;
+      }
+
+      .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
+      }
+
+      .step {
+        flex: 1;
+        text-align: center;
+        position: relative;
+        padding: 10px;
+      }
+
+      .step::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: -50%;
+        right: 50%;
+        height: 2px;
+        background: #e0e0e0;
+        z-index: -1;
+      }
+
+      .step:first-child::before {
+        display: none;
+      }
+
+      .step.active {
+        color: #667eea;
+        font-weight: bold;
+      }
+
+      .step.completed {
+        color: #52c41a;
+      }
+
+      .step-content {
+        display: none;
+      }
+
+      .step-content.active {
+        display: block;
+      }
+
+      .step-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🧪 Web自动化测试页面</h1>
+        <p>测试插件的所有功能：表单、按钮、弹框、链接</p>
+      </div>
+
+      <!-- 1. 按钮测试区 -->
+      <div class="test-section">
+        <h2>🔘 按钮功能测试</h2>
+        <p style="margin-bottom: 15px">
+          测试各种类型的按钮点击，有些会触发弹框
+        </p>
+        <div class="button-group">
+          <button class="btn-primary" onclick="showSimpleAlert()">
+            普通提示
+          </button>
+          <button class="btn-success" onclick="showSuccessMessage()">
+            成功消息
+          </button>
+          <button class="btn-danger" onclick="showModal('loginModal')">
+            登录弹框
+          </button>
+          <button class="btn-warning" onclick="showModal('registerModal')">
+            注册弹框
+          </button>
+          <button class="btn-info" onclick="showModal('contactModal')">
+            联系我们
+          </button>
+          <button class="btn-primary" onclick="simulateAPICall()">
+            API调用测试
+          </button>
+        </div>
+        <div id="btnResult" class="result"></div>
+      </div>
+
+      <!-- 2. 单步表单测试 -->
+      <div class="test-section">
+        <h2>📝 单步表单测试</h2>
+        <form id="simpleForm" onsubmit="handleSimpleFormSubmit(event)">
+          <div class="form-group">
+            <label for="fullname">姓名</label>
+            <input
+              type="text"
+              id="fullname"
+              name="fullname"
+              placeholder="请输入姓名"
+            />
+          </div>
+          <div class="form-group">
+            <label for="email">邮箱</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="example@email.com"
+            />
+          </div>
+          <div class="form-group">
+            <label for="phone">电话</label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              placeholder="13800138000"
+            />
+          </div>
+          <div class="form-group">
+            <label for="message">留言</label>
+            <textarea
+              id="message"
+              name="message"
+              placeholder="请输入您的留言..."
+            ></textarea>
+          </div>
+          <button type="submit" class="btn-success">提交表单</button>
+        </form>
+        <div id="formResult" class="result"></div>
+      </div>
+
+      <!-- 3. 多步骤表单测试 -->
+      <div class="test-section">
+        <h2>📋 多步骤表单测试</h2>
+        <div class="step-form">
+          <div class="step-indicator">
+            <div class="step active" id="step1Indicator">步骤1: 基本信息</div>
+            <div class="step" id="step2Indicator">步骤2: 联系方式</div>
+            <div class="step" id="step3Indicator">步骤3: 确认提交</div>
+          </div>
+
+          <form id="multiStepForm">
+            <!-- 步骤1 -->
+            <div class="step-content active" id="step1Content">
+              <div class="form-group">
+                <label for="step1Name">用户名</label>
+                <input
+                  type="text"
+                  id="step1Name"
+                  name="username"
+                  placeholder="请输入用户名"
+                />
+              </div>
+              <div class="form-group">
+                <label for="step1Email">邮箱地址</label>
+                <input
+                  type="email"
+                  id="step1Email"
+                  name="email"
+                  placeholder="your@email.com"
+                />
+              </div>
+              <div class="step-buttons">
+                <button
+                  type="button"
+                  class="btn-primary next"
+                  onclick="nextStep(2)"
+                >
+                  下一步
+                </button>
+              </div>
+            </div>
+
+            <!-- 步骤2 -->
+            <div class="step-content" id="step2Content">
+              <div class="form-group">
+                <label for="step2Phone">手机号</label>
+                <input
+                  type="tel"
+                  id="step2Phone"
+                  name="phone"
+                  placeholder="13800138000"
+                />
+              </div>
+              <div class="form-group">
+                <label for="step2Address">地址</label>
+                <input
+                  type="text"
+                  id="step2Address"
+                  name="address"
+                  placeholder="请输入地址"
+                />
+              </div>
+              <div class="step-buttons">
+                <button type="button" class="btn-warning" onclick="nextStep(1)">
+                  上一步
+                </button>
+                <button
+                  type="button"
+                  class="btn-primary next"
+                  onclick="nextStep(3)"
+                >
+                  下一步
+                </button>
+              </div>
+            </div>
+
+            <!-- 步骤3 -->
+            <div class="step-content" id="step3Content">
+              <div class="form-group">
+                <label for="step3Company">公司名称</label>
+                <input
+                  type="text"
+                  id="step3Company"
+                  name="company"
+                  placeholder="公司名称"
+                />
+              </div>
+              <div class="form-group">
+                <label for="step3Description">备注</label>
+                <textarea
+                  id="step3Description"
+                  name="description"
+                  placeholder="其他备注信息"
+                ></textarea>
+              </div>
+              <div class="step-buttons">
+                <button type="button" class="btn-warning" onclick="nextStep(2)">
+                  上一步
+                </button>
+                <button
+                  type="submit"
+                  class="btn-success"
+                  onclick="handleMultiStepSubmit(event)"
+                >
+                  提交
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div id="multiStepResult" class="result"></div>
+      </div>
+
+      <!-- 4. 链接测试 -->
+      <div class="test-section">
+        <h2>🔗 链接功能测试</h2>
+        <p style="margin-bottom: 15px">
+          测试各种链接（将被验证但不会实际跳转）
+        </p>
+        <ul class="link-list">
+          <li><a href="#section1">锚点链接 #section1</a></li>
+          <li><a href="#section2">锚点链接 #section2</a></li>
+          <li><a href="/test-page1">同域链接 /test-page1</a></li>
+          <li><a href="/test-page2">同域链接 /test-page2</a></li>
+          <li><a href="javascript:void(0)">JavaScript链接</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 登录模态框 -->
+    <div class="modal" id="loginModal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>用户登录</h3>
+          <button class="modal-close" onclick="closeModal('loginModal')">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+            <div class="form-group">
+              <label for="loginUsername">用户名</label>
+              <input
+                type="text"
+                id="loginUsername"
+                name="username"
+                placeholder="请输入用户名"
+              />
+            </div>
+            <div class="form-group">
+              <label for="loginPassword">密码</label>
+              <input
+                type="password"
+                id="loginPassword"
+                name="password"
+                placeholder="请输入密码"
+              />
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn-warning"
+                onclick="closeModal('loginModal')"
+              >
+                取消
+              </button>
+              <button type="submit" class="btn-success">登录</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 注册模态框 -->
+    <div class="modal" id="registerModal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>用户注册</h3>
+          <button class="modal-close" onclick="closeModal('registerModal')">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="registerForm" onsubmit="handleRegisterSubmit(event)">
+            <div class="form-group">
+              <label for="regUsername">用户名</label>
+              <input
+                type="text"
+                id="regUsername"
+                name="username"
+                placeholder="请输入用户名"
+              />
+            </div>
+            <div class="form-group">
+              <label for="regEmail">邮箱</label>
+              <input
+                type="email"
+                id="regEmail"
+                name="email"
+                placeholder="example@email.com"
+              />
+            </div>
+            <div class="form-group">
+              <label for="regPassword">密码</label>
+              <input
+                type="password"
+                id="regPassword"
+                name="password"
+                placeholder="请输入密码"
+              />
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn-warning"
+                onclick="closeModal('registerModal')"
+              >
+                取消
+              </button>
+              <button type="submit" class="btn-success">注册</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 联系我们模态框 -->
+    <div class="modal" id="contactModal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>联系我们</h3>
+          <button class="modal-close" onclick="closeModal('contactModal')">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="contactForm" onsubmit="handleContactSubmit(event)">
+            <div class="form-group">
+              <label for="contactName">您的姓名</label>
+              <input
+                type="text"
+                id="contactName"
+                name="name"
+                placeholder="请输入姓名"
+              />
+            </div>
+            <div class="form-group">
+              <label for="contactEmail">您的邮箱</label>
+              <input
+                type="email"
+                id="contactEmail"
+                name="email"
+                placeholder="your@email.com"
+              />
+            </div>
+            <div class="form-group">
+              <label for="contactMessage">留言内容</label>
+              <textarea
+                id="contactMessage"
+                name="message"
+                placeholder="请输入您的留言..."
+              ></textarea>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn-warning"
+                onclick="closeModal('contactModal')"
+              >
+                关闭
+              </button>
+              <button type="submit" class="btn-success">发送</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 显示简单提示
+      function showSimpleAlert() {
+        const result = document.getElementById("btnResult");
+        result.className = "result show result-success";
+        result.textContent = "✓ 按钮点击成功！这是一个简单的提示消息。";
+        setTimeout(() => {
+          result.className = "result";
+        }, 3000);
+      }
+
+      // 显示成功消息
+      function showSuccessMessage() {
+        const result = document.getElementById("btnResult");
+        result.className = "result show result-success";
+        result.textContent = "✓ 操作成功！数据已保存。";
+        setTimeout(() => {
+          result.className = "result";
+        }, 3000);
+      }
+
+      // 显示模态框
+      function showModal(modalId) {
+        document.getElementById(modalId).classList.add("show");
+      }
+
+      // 关闭模态框
+      function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove("show");
+      }
+
+      // 模拟API调用
+      function simulateAPICall() {
+        const result = document.getElementById("btnResult");
+        result.className = "result show result-success";
+        result.textContent = "⏳ 正在调用API...";
+
+        // 模拟异步请求
+        setTimeout(() => {
+          result.textContent =
+            '✓ API调用成功！返回数据：{status: "success", data: [...]}';
+        }, 1000);
+
+        setTimeout(() => {
+          result.className = "result";
+        }, 4000);
+      }
+
+      // 处理简单表单提交
+      function handleSimpleFormSubmit(event) {
+        event.preventDefault();
+        const result = document.getElementById("formResult");
+        result.className = "result show result-success";
+        result.textContent = "✓ 表单提交成功！您的信息已收到。";
+
+        // 清空表单
+        document.getElementById("simpleForm").reset();
+
+        setTimeout(() => {
+          result.className = "result";
+        }, 3000);
+      }
+
+      // 多步骤表单
+      let currentStep = 1;
+
+      function nextStep(step) {
+        // 隐藏当前步骤
+        document
+          .getElementById(`step${currentStep}Content`)
+          .classList.remove("active");
+        document
+          .getElementById(`step${currentStep}Indicator`)
+          .classList.remove("active");
+        document
+          .getElementById(`step${currentStep}Indicator`)
+          .classList.add("completed");
+
+        // 显示目标步骤
+        currentStep = step;
+        document
+          .getElementById(`step${currentStep}Content`)
+          .classList.add("active");
+        document
+          .getElementById(`step${currentStep}Indicator`)
+          .classList.add("active");
+      }
+
+      function handleMultiStepSubmit(event) {
+        event.preventDefault();
+        const result = document.getElementById("multiStepResult");
+        result.className = "result show result-success";
+        result.textContent = "✓ 多步骤表单提交成功！所有信息已完整收集。";
+
+        // 重置表单
+        document.getElementById("multiStepForm").reset();
+        currentStep = 1;
+        document
+          .querySelectorAll(".step-content")
+          .forEach((el) => el.classList.remove("active"));
+        document.querySelectorAll(".step").forEach((el) => {
+          el.classList.remove("active", "completed");
+        });
+        document.getElementById("step1Content").classList.add("active");
+        document.getElementById("step1Indicator").classList.add("active");
+
+        setTimeout(() => {
+          result.className = "result";
+        }, 3000);
+      }
+
+      // 处理登录表单
+      function handleLoginSubmit(event) {
+        event.preventDefault();
+        alert("登录成功！");
+        closeModal("loginModal");
+        document.getElementById("loginForm").reset();
+      }
+
+      // 处理注册表单
+      function handleRegisterSubmit(event) {
+        event.preventDefault();
+        alert("注册成功！");
+        closeModal("registerModal");
+        document.getElementById("registerForm").reset();
+      }
+
+      // 处理联系表单
+      function handleContactSubmit(event) {
+        event.preventDefault();
+        alert("消息已发送！我们会尽快回复您。");
+        closeModal("contactModal");
+        document.getElementById("contactForm").reset();
+      }
+
+      // 点击模态框外部关闭
+      window.onclick = function (event) {
+        if (event.target.classList.contains("modal")) {
+          event.target.classList.remove("show");
+        }
+      };
+    </script>
+  </body>
+</html>
