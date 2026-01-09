@@ -344,100 +344,99 @@
     }
 
     setupMessageListener () {
-    // 🔧 检查是否在Content Script上下文（有chrome API）还是页面主上下文
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-      // Content Script上下文 - 使用chrome.runtime.onMessage
-      chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        switch (request.action) {
-          case 'updateFloatingProgress':
-            this.updateProgress(request.data);
-            break;
-          case 'addFloatingLog':
-            this.addLog(request.message, request.type);
-            break;
-          case 'testComplete':
-            // 测试完成，更新UI
-            this.setTestComplete();
-            break;
-          case 'updateFloatingStatus':
-            this.updateStatus(request.status);
-            break;
-          case 'showFloatingBall':
-            this.showBall();
-            break;
-          case 'hideFloatingBall':
-            this.hideBall();
-            break;
-        }
-        sendResponse({ success: true });
-      });
-      console.log('[FloatingBall] ✅ 使用chrome.runtime消息监听（Content Script上下文）');
-    } else {
-      // 页面主上下文 - 使用window事件监听
-      window.addEventListener('floatingBallMessage', (event) => {
-        const request = event.detail;
-        switch (request.action) {
-          case 'updateFloatingProgress':
-            this.updateProgress(request.data);
-            break;
-          case 'addFloatingLog':
-            this.addLog(request.message, request.type);
-            break;
-          case 'testComplete':
-            this.setTestComplete();
-            break;
-          case 'updateFloatingStatus':
-            this.updateStatus(request.status);
-            break;
-          case 'showFloatingBall':
-            this.showBall();
-            break;
-          case 'hideFloatingBall':
-            this.hideBall();
-            break;
-        }
-      });
-      console.log('[FloatingBall] ✅ 使用window事件监听（页面主上下文）');
-    }
-
-    showBall () {
-      const container = document.getElementById('floating-ball-container');
-      if (container) {
-        container.style.display = 'block';
-        this.isVisible = true;
-        console.log('[FloatingBall] ✅ 悬浮球已显示');
-      } else {
-        console.warn('[FloatingBall] ⚠️  悬浮球容器不存在，尝试重新注入');
-        try {
-          this.injectFloatingBall();
-          const newContainer = document.getElementById('floating-ball-container');
-          if (newContainer) {
-            newContainer.style.display = 'block';
-            this.isVisible = true;
-            console.log('[FloatingBall] ✅ 悬浮球重新注入并显示成功');
-          } else {
-            console.error('[FloatingBall] ❌ 悬浮球重新注入后仍然找不到容器');
+      // 🔧 检查是否在Content Script上下文（有chrome API）还是页面主上下文
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+        // Content Script上下文 - 使用chrome.runtime.onMessage
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+          switch (request.action) {
+            case 'updateFloatingProgress':
+              this.updateProgress(request.data);
+              break;
+            case 'addFloatingLog':
+              this.addLog(request.message, request.type);
+              break;
+            case 'testComplete':
+              // 测试完成，更新UI
+              this.setTestComplete();
+              break;
+            case 'updateFloatingStatus':
+              this.updateStatus(request.status);
+              break;
+            case 'showFloatingBall':
+              this.showBall();
+              break;
+            case 'hideFloatingBall':
+              this.hideBall();
+              break;
           }
-        } catch (error) {
-          console.error('[FloatingBall] ❌ 悬浮球重新注入失败:', error);
-        }
+          sendResponse({ success: true });
+        });
+        console.log('[FloatingBall] ✅ 使用chrome.runtime消息监听（Content Script上下文）');
+      } else {
+        // 页面主上下文 - 使用window事件监听
+        window.addEventListener('floatingBallMessage', (event) => {
+          const request = event.detail;
+          switch (request.action) {
+            case 'updateFloatingProgress':
+              this.updateProgress(request.data);
+              break;
+            case 'addFloatingLog':
+              this.addLog(request.message, request.type);
+              break;
+            case 'testComplete':
+              this.setTestComplete();
+              break;
+            case 'updateFloatingStatus':
+              this.updateStatus(request.status);
+              break;
+            case 'showFloatingBall':
+              this.showBall();
+              break;
+            case 'hideFloatingBall':
+              this.hideBall();
+              break;
+          }
+        });
+        console.log('[FloatingBall] ✅ 使用window事件监听（页面主上下文）');
       }
     }
 
-    hideBall () {
+    showBall() {
       const container = document.getElementById('floating-ball-container');
-      if (container) {
-        container.style.display = 'none';
-        this.isVisible = false;
+    if (container) {
+      container.style.display = 'block';
+      this.isVisible = true;
+      console.log('[FloatingBall] ✅ 悬浮球已显示');
+    } else {
+      console.warn('[FloatingBall] ⚠️  悬浮球容器不存在，尝试重新注入');
+      try {
+        this.injectFloatingBall();
+        const newContainer = document.getElementById('floating-ball-container');
+        if (newContainer) {
+          newContainer.style.display = 'block';
+          this.isVisible = true;
+          console.log('[FloatingBall] ✅ 悬浮球重新注入并显示成功');
+        } else {
+          console.error('[FloatingBall] ❌ 悬浮球重新注入后仍然找不到容器');
+        }
+      } catch (error) {
+        console.error('[FloatingBall] ❌ 悬浮球重新注入失败:', error);
       }
     }
   }
 
-  // 🌍 将FloatingBallManager类暴露到全局作用域
+  hideBall() {
+    const container = document.getElementById('floating-ball-container');
+    if (container) {
+      container.style.display = 'none';
+      this.isVisible = false;
+    }
+  }
+}
   window.FloatingBallManager = FloatingBallManager;
 
-  // 页面加载时初始化
-  if (document.readyState === 'loading') {
+    // 页面加载时初始化
+    if (document.readyState === 'loading') {
     console.log('[FloatingBall] 页面正在加载，等待DOMContentLoaded...');
     document.addEventListener('DOMContentLoaded', () => {
       try {

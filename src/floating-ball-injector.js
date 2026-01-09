@@ -20,7 +20,7 @@
 
   // 尽早注入（在head或documentElement）
   (document.head || document.documentElement).appendChild(script);
-  
+
   // 🔗 设置消息桥接：从Content Script转发chrome.runtime消息到页面主上下文
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 将chrome.runtime消息转发为window事件
@@ -30,7 +30,7 @@
       }));
       console.log('[FloatingBallInjector] 📨 转发消息到页面主上下文:', request.action);
     }
-    
+
     // 特殊处理：显示/隐藏悬浮球
     if (request.action === 'showFloatingBall' || request.action === 'hideFloatingBall') {
       window.dispatchEvent(new CustomEvent('floatingBallMessage', {
@@ -38,9 +38,9 @@
       }));
       console.log('[FloatingBallInjector] 📨 转发消息:', request.action);
     }
-    
+
     return true;
   });
-  
+
   console.log('[FloatingBallInjector] ✅ 消息桥接已建立');
 })();
