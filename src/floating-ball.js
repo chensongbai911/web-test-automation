@@ -399,6 +399,9 @@ class FloatingBallManager {
   }
 }
 
+// 🌍 将FloatingBallManager类暴露到全局作用域
+window.FloatingBallManager = FloatingBallManager;
+
 // 页面加载时初始化
 if (document.readyState === 'loading') {
   console.log('[FloatingBall] 页面正在加载，等待DOMContentLoaded...');
