@@ -16,13 +16,29 @@ window.addEventListener('error', (event) => {
     event.preventDefault();
     return true;
   }
+  // 如果是扩展自身的错误，让它正常抛出以便调试
+  console.error('[Web测试工具] 扩展内部错误:', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno
+  });
 }, true);
 
-// 🛡️ 捕获Promise rejection错误
+// 🛡️ 捕获Promise rejection错误（仅第三方）
 window.addEventListener('unhandledrejection', (event) => {
-  console.warn('[Web测试工具] 检测到未处理的Promise错误（已忽略）:', event.reason);
-  // 阻止错误继续传播
-  event.preventDefault();
+  // 检查错误堆栈，判断是否来自扩展
+  const stack = event.reason?.stack || '';
+  const isExtensionError = stack.includes('chrome-extension://');
+  
+  if (!isExtensionError) {
+    // 第三方Promise错误，记录并忽略
+    console.warn('[Web测试工具] 检测到页面Promise错误（已忽略）:', event.reason);
+    event.preventDefault();
+  } else {
+    // 扩展自身的Promise错误，让它正常抛出以便调试
+    console.error('[Web测试工具] 扩展Promise错误（需要处理）:', event.reason);
+  }
 });
 
 // 初始化全局处理器（等待其他脚本加载完成）
