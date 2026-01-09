@@ -5,12 +5,144 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Web测试自动化工具</title>
     <link rel="stylesheet" href="popup.css" />
+    <style>
+      /* 标签页样式 */
+      .tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid #e0e0e0;
+        margin-bottom: 20px;
+      }
+
+      .tab-btn {
+        flex: 1;
+        padding: 12px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+        transition: all 0.3s;
+      }
+
+      .tab-btn:hover {
+        color: #333;
+        background: #f9f9f9;
+      }
+
+      .tab-btn.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      /* 上传区域样式 */
+      .upload-section {
+        margin-bottom: 20px;
+      }
+
+      .upload-box {
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: #f9faff;
+      }
+
+      .upload-box:hover {
+        border-color: #5568d3;
+        background: #f5f7ff;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+      }
+
+      .upload-box.dragover {
+        border-color: #5568d3;
+        background: #f0f4ff;
+      }
+
+      .upload-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+      }
+
+      .upload-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      .upload-subtitle {
+        font-size: 12px;
+        color: #999;
+      }
+
+      /* 文件信息样式 */
+      .file-info {
+        padding: 15px;
+        background: #f0f9ff;
+        border-radius: 8px;
+        border-left: 4px solid #0066cc;
+      }
+
+      .file-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        word-break: break-all;
+      }
+
+      .file-stats {
+        font-size: 12px;
+        color: #666;
+        line-height: 1.6;
+      }
+
+      .file-errors {
+        margin-top: 10px;
+        padding: 10px;
+        background: #fff3cd;
+        border-radius: 4px;
+        border-left: 3px solid #ff6b6b;
+      }
+
+      .file-errors.error {
+        background: #f8d7da;
+        border-left-color: #dc3545;
+      }
+
+      .file-errors ul {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 12px;
+        color: #333;
+      }
+
+      .file-errors li {
+        margin: 4px 0;
+      }
+
+      .file-errors strong {
+        color: #dc3545;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
       <div class="header">
         <h1>Web功能自动化测试</h1>
-        <p class="subtitle">输入网址并自动化测试所有功能</p>
+        <p class="subtitle">智能化自动化测试平台</p>
         <button
           id="settingsBtn"
           style="
@@ -31,83 +163,124 @@
       </div>
 
       <div class="content">
-        <div class="input-section">
-          <label for="urlInput">目标网址：</label>
-          <input
-            type="url"
-            id="urlInput"
-            placeholder="https://example.com"
-            value=""
-          />
+        <!-- 标签页切换 -->
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="manual">🔍 自动分析</button>
+          <button class="tab-btn" data-tab="custom">📋 自定义测试</button>
         </div>
 
-        <div class="config-section">
-          <h3>测试配置</h3>
-          <div class="config-grid">
-            <label>
-              <input type="checkbox" id="testInteraction" checked />
-              测试交互按钮
-            </label>
-            <label>
-              <input type="checkbox" id="monitorAPI" checked />
-              监控API请求
-            </label>
-            <label>
-              <input type="checkbox" id="captureScreenshot" checked />
-              捕获截图
-            </label>
-            <label>
-              <input type="checkbox" id="captureConsole" checked />
-              捕获控制台日志
-            </label>
-            <label>
-              <input type="checkbox" id="testForms" checked />
-              测试表单输入
-            </label>
-            <label>
-              <input type="checkbox" id="testLinks" checked />
-              测试链接跳转
-            </label>
+        <!-- 标签页 1: 自动分析 -->
+        <div id="manual-tab" class="tab-content active">
+          <div class="input-section">
+            <label for="urlInput">目标网址：</label>
+            <input
+              type="url"
+              id="urlInput"
+              placeholder="https://example.com"
+              value=""
+            />
+          </div>
+
+          <div class="config-section">
+            <h3>测试配置</h3>
+            <div class="config-grid">
+              <label>
+                <input type="checkbox" id="testInteraction" checked />
+                测试交互按钮
+              </label>
+              <label>
+                <input type="checkbox" id="monitorAPI" checked />
+                监控API请求
+              </label>
+              <label>
+                <input type="checkbox" id="captureScreenshot" checked />
+                捕获截图
+              </label>
+              <label>
+                <input type="checkbox" id="captureConsole" checked />
+                捕获控制台日志
+              </label>
+              <label>
+                <input type="checkbox" id="testForms" checked />
+                测试表单输入
+              </label>
+              <label>
+                <input type="checkbox" id="testLinks" checked />
+                测试链接跳转
+              </label>
+            </div>
+          </div>
+
+          <div class="advanced-section">
+            <h3>高级设置</h3>
+            <div class="setting-item">
+              <label for="delayInput">测试间隔（毫秒）：</label>
+              <input
+                type="number"
+                id="delayInput"
+                value="1200"
+                min="100"
+                max="5000"
+                step="100"
+              />
+            </div>
+            <div class="setting-item">
+              <label for="maxElements">最大测试元素数：</label>
+              <input
+                type="number"
+                id="maxElements"
+                value="100"
+                min="10"
+                max="500"
+                step="10"
+              />
+            </div>
+            <div class="setting-item">
+              <label for="timeoutInput">页面超时（秒）：</label>
+              <input
+                type="number"
+                id="timeoutInput"
+                value="30"
+                min="5"
+                max="120"
+                step="5"
+              />
+            </div>
           </div>
         </div>
 
-        <div class="advanced-section">
-          <h3>高级设置</h3>
-          <div class="setting-item">
-            <label for="delayInput">测试间隔（毫秒）：</label>
-            <input
-              type="number"
-              id="delayInput"
-              value="1200"
-              min="100"
-              max="5000"
-              step="100"
-            />
+        <!-- 标签页 2: 自定义测试 -->
+        <div id="custom-tab" class="tab-content">
+          <div class="upload-section">
+            <div class="upload-box" id="uploadBox">
+              <div class="upload-icon">📄</div>
+              <div class="upload-title">上传测试用例文档</div>
+              <div class="upload-subtitle">拖放 JSON 文件或点击选择</div>
+              <input type="file" id="testCaseFile" accept=".json" style="display: none;" />
+            </div>
+
+            <div class="file-info" id="fileInfo" style="display: none;">
+              <div class="file-name" id="fileName"></div>
+              <div class="file-stats" id="fileStats"></div>
+              <div class="file-errors" id="fileErrors" style="display: none;"></div>
+              <button id="clearFileBtn" class="btn btn-secondary" style="margin-top: 10px;">
+                ✕ 清除文件
+              </button>
+            </div>
           </div>
-          <div class="setting-item">
-            <label for="maxElements">最大测试元素数：</label>
-            <input
-              type="number"
-              id="maxElements"
-              value="100"
-              min="10"
-              max="500"
-              step="10"
-            />
-          </div>
-          <div class="setting-item">
-            <label for="timeoutInput">页面超时（秒）：</label>
-            <input
-              type="number"
-              id="timeoutInput"
-              value="30"
-              min="5"
-              max="120"
-              step="5"
-            />
+
+          <div style="margin-top: 15px; padding: 12px; background: #f0f9ff; border-radius: 5px; font-size: 12px;">
+            <strong style="color: #0066cc;">📖 如何使用：</strong>
+            <ol style="margin: 8px 0; padding-left: 20px; color: #333;">
+              <li>下载 <a href="#" id="downloadTemplateBtn" style="color: #0066cc; text-decoration: underline;">测试模板</a></li>
+              <li>按照格式编写你的测试用例</li>
+              <li>上传 JSON 文件</li>
+              <li>点击"开始测试"执行</li>
+            </ol>
           </div>
         </div>
 
+        <!-- 共享的操作按钮 -->
         <div class="action-section">
           <button id="startTestBtn" class="btn btn-primary">
             <span class="icon">▶</span> 开始测试
@@ -118,6 +291,23 @@
           <button id="viewReportBtn" class="btn btn-info" disabled>
             <span class="icon">📊</span> 查看报告
           </button>
+        </div>
+
+        <!-- 测试状态区域 -->
+        <div class="status-section" id="statusSection" style="display: none">
+          <h3>测试状态</h3>
+          <div class="status-bar">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="status-info">
+            <p>已测试项目: <span id="testedCount">0</span></p>
+            <p>成功: <span id="successCount">0</span></p>
+            <p>失败: <span id="failureCount">0</span></p>
+            <p>验证失败: <span id="apiErrorCount">0</span></p>
+          </div>
+          <div class="log-area">
+            <div id="logContainer" class="log-container"></div>
+          </div>
         </div>
 
         <!-- Qwen设置模态窗口 -->
@@ -278,25 +468,10 @@
             ></div>
           </div>
         </div>
-
-        <div class="status-section" id="statusSection" style="display: none">
-          <h3>测试状态</h3>
-          <div class="status-bar">
-            <div class="progress-bar" id="progressBar"></div>
-          </div>
-          <div class="status-info">
-            <p>已测试按钮: <span id="testedCount">0</span></p>
-            <p>成功: <span id="successCount">0</span></p>
-            <p>失败: <span id="failureCount">0</span></p>
-            <p>API错误: <span id="apiErrorCount">0</span></p>
-          </div>
-          <div class="log-area">
-            <div id="logContainer" class="log-container"></div>
-          </div>
-        </div>
       </div>
     </div>
 
+    <script src="test-case-parser.js"></script>
     <script src="qwen-integration.js"></script>
     <script src="popup.js"></script>
   </body>

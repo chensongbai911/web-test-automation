@@ -216,6 +216,110 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'ping') {
     // 响应ping消息，告知当前测试状态
     sendResponse({ success: true, testing: testActive });
+  } else if (request.action === 'analyzePageStructure') {
+    // 🆕 分析页面结构，提取所有可交互元素
+    console.log('[Web测试工具] 开始分析页面结构...');
+    testConfig = request.config;
+
+    try {
+      const elements = getInteractiveElements();
+      const analysis = {
+        pageTitle: document.title,
+        pageUrl: window.location.href,
+        elementCount: elements.length,
+        elements: elements.map(el => ({
+          type: el.type,
+          text: el.text,
+          selector: el.selector
+        }))
+      };
+
+      console.log('[Web测试工具] 页面分析完成，检测到 ' + elements.length + ' 个元素');
+      sendResponse({
+        success: true,
+        analysis: analysis,
+        elementCount: elements.length
+      });
+    } catch (error) {
+      console.error('[Web测试工具] 页面分析失败:', error);
+      sendResponse({
+        success: false,
+        error: error.message
+      });
+    }
+  } else if (request.action === 'generateTestPlan') {
+    // 🆕 生成测试计划
+    console.log('[Web测试工具] 开始生成测试计划...');
+
+    try {
+      const analysis = request.analysis;
+      // 简单的测试计划：按顺序测试所有元素
+      const testPlan = {
+        steps: (analysis.elements || []).map((el, index) => ({
+          stepId: index + 1,
+          action: el.type === 'input' ? 'fill' : el.type === 'link' ? 'navigate' : 'click',
+          target: el.selector,
+          description: `测试${el.type}：${el.text}`
+        }))
+      };
+
+      console.log('[Web测试工具] 测试计划已生成，共 ' + testPlan.steps.length + ' 个步骤');
+      const estimatedSeconds = testPlan.steps.length * (testConfig.delay || 1200) / 1000;
+
+      sendResponse({
+        success: true,
+        plan: testPlan,
+        stepCount: testPlan.steps.length,
+        estimatedDuration: Math.round(estimatedSeconds)
+      });
+    } catch (error) {
+      console.error('[Web测试工具] 测试计划生成失败:', error);
+      sendResponse({
+        success: false,
+        error: error.message
+      });
+    }
+  } else if (request.action === 'executeCustomTestCases') {
+    // 🆕 执行自定义测试用例
+    console.log('[Web测试工具] 开始执行自定义测试用例...');
+
+    (async () => {
+      try {
+        const testCases = request.testCases;
+
+        if (!window.CustomTestExecutor) {
+          throw new Error('CustomTestExecutor 未加载');
+        }
+
+        const executor = new window.CustomTestExecutor();
+        const results = await executor.executeTestCases(testCases);
+
+        // 保存测试结果到Chrome storage
+        chrome.storage.local.set({
+          lastTestReport: {
+            type: 'custom',
+            testName: testCases.testName,
+            targetUrl: testCases.targetUrl,
+            results: results,
+            timestamp: new Date().toISOString()
+          }
+        });
+
+        // 发送完成消息
+        chrome.runtime.sendMessage({
+          action: 'testCompleted',
+          results: results
+        }).catch(() => { });
+
+        console.log('[Web测试工具] ✅ 自定义测试用例执行完成');
+        sendResponse({ success: true, results: results });
+      } catch (error) {
+        console.error('[Web测试工具] 自定义测试执行失败:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+
+    return true; // 异步响应
   } else if (request.action === 'startTest') {
     console.log('[Web测试工具] 收到startTest消息，配置:', request.config);
     testConfig = request.config;

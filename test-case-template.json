@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "testName": "示例测试套件 - 快速入门",
+  "description": "这是一个简单的示例测试套件，展示基本的测试功能",
+  "targetUrl": "https://example.com",
+  "config": {
+    "timeout": 30,
+    "retryCount": 1,
+    "screenshot": true,
+    "stopOnFailure": false
+  },
+  "testCases": [
+    {
+      "id": "TC001",
+      "name": "页面加载验证",
+      "description": "验证页面是否正常加载",
+      "enabled": true,
+      "steps": [
+        {
+          "type": "verify",
+          "verifyType": "elementExists",
+          "selector": "body",
+          "description": "验证页面body元素存在"
+        },
+        {
+          "type": "verify",
+          "verifyType": "elementVisible",
+          "selector": "h1",
+          "description": "验证标题可见"
+        }
+      ]
+    },
+    {
+      "id": "TC002",
+      "name": "链接点击测试",
+      "description": "测试页面上的链接是否可点击",
+      "enabled": true,
+      "steps": [
+        {
+          "type": "waitForElement",
+          "selector": "a[href]",
+          "timeout": 5000,
+          "description": "等待链接元素出现"
+        },
+        {
+          "type": "verify",
+          "verifyType": "elementCount",
+          "selector": "a[href]",
+          "expected": "2",
+          "description": "验证页面有2个链接"
+        }
+      ]
+    }
+  ]
+}

@@ -400,8 +400,8 @@ function renderReport () {
     document.querySelector('.stats-grid').appendChild(successRateEl);
   }
 
-  // 渲染饼图
-  renderPieChart(stats);
+  // 渲染饼图 - 传递 elements 数组或 stats 对象
+  renderPieChart(elements || []);
 
   // 渲染柱状图
   renderBarChart(elementTypes || elements);
@@ -426,93 +426,153 @@ function escapeHtml (text) {
 
 
 // 渲染饼图
-function renderPieChart (stats) {
-  const ctx = document.getElementById('pieChart').getContext('2d');
+function renderPieChart (elements) {
+  const ctx = document.getElementById('pieChart');
+  if (!ctx) {
+    console.warn('[报告] 未找到饼图容器');
+    return;
+  }
 
-  const total = stats.successCount + stats.failureCount;
-  const data = [stats.successCount, stats.failureCount];
+  // 统计成功和失败
+  let success = 0;
+  let failed = 0;
 
-  new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['成功', '失败'],
-      datasets: [{
-        data: data,
-        backgroundColor: ['#4CAF50', '#f44336'],
-        borderColor: ['#45a049', '#da190b'],
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            font: { size: 14 },
-            padding: 20
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const label = context.label || '';
-              const value = context.parsed || 0;
-              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-              return `${label}: ${value} (${percentage}%)`;
+  if (Array.isArray(elements)) {
+    elements.forEach(el => {
+      // 兼容多种字段名：success, status, result, passed
+      const elSuccess = el.success || el.status === 'success' || el.passed || el.result === true;
+      if (elSuccess) {
+        success++;
+      } else {
+        failed++;
+      }
+    });
+  }
+
+  // 使用备用数据源
+  if (success === 0 && failed === 0 && testData && testData.stats) {
+    success = testData.stats.successCount || 0;
+    failed = testData.stats.failureCount || 0;
+  }
+
+  // 如果仍然没有数据，显示提示
+  if (success === 0 && failed === 0) {
+    console.warn('[报告] 没有测试结果数据');
+    ctx.parentElement.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无测试结果数据</p>';
+    return;
+  }
+
+  const total = success + failed;
+
+  try {
+    new Chart(ctx.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['成功', '失败'],
+        datasets: [{
+          data: [success, failed],
+          backgroundColor: ['#4CAF50', '#f44336'],
+          borderColor: ['#45a049', '#da190b'],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              font: { size: 14 },
+              padding: 20
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                return `${label}: ${value} (${percentage}%)`;
+              }
             }
           }
         }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error('[报告] 饼图渲染失败:', error);
+  }
 }
 
 // 渲染柱状图
 function renderBarChart (elements) {
-  const ctx = document.getElementById('barChart').getContext('2d');
+  const ctx = document.getElementById('barChart');
+  if (!ctx) {
+    console.warn('[报告] 未找到柱状图容器');
+    return;
+  }
 
-  // 统计元素类型
+  // 处理数据格式，支持多种字段名
   const types = {};
-  elements.forEach(el => {
-    types[el.type] = (types[el.type] || 0) + 1;
-  });
 
+  if (Array.isArray(elements)) {
+    elements.forEach(el => {
+      // 兼容多种字段名：type, elementType
+      const elType = el.type || el.elementType || 'unknown';
+      types[elType] = (types[elType] || 0) + 1;
+    });
+  } else if (typeof elements === 'object') {
+    // 如果是对象类型（键为类型，值为数量）
+    Object.assign(types, elements);
+  }
+
+  // 检查是否有数据
   const labels = Object.keys(types);
   const data = Object.values(types);
-  const colors = ['#667eea', '#764ba2', '#f44336', '#4CAF50', '#ff9800'];
 
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: '元素数量',
-        data: data,
-        backgroundColor: colors.slice(0, labels.length),
-        borderColor: colors.slice(0, labels.length),
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        }
+  if (labels.length === 0) {
+    console.warn('[报告] 没有元素类型数据');
+    ctx.parentElement.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无元素类型数据</p>';
+    return;
+  }
+
+  const colors = ['#667eea', '#764ba2', '#f44336', '#4CAF50', '#ff9800', '#2196F3', '#009688'];
+
+  try {
+    new Chart(ctx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '元素数量',
+          data: data,
+          backgroundColor: colors.slice(0, labels.length),
+          borderColor: colors.slice(0, labels.length),
+          borderWidth: 1
+        }]
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
           }
         }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error('[报告] 柱状图渲染失败:', error);
+  }
 }
 
 // 渲染API统计
@@ -538,36 +598,81 @@ function renderAPIStats (apiRequests) {
 // 渲染元素表
 function renderElementsTable (elements) {
   const tbody = document.getElementById('elementsTableBody');
+  if (!tbody) {
+    console.warn('[报告] 未找到elementsTableBody元素');
+    return;
+  }
+
   tbody.innerHTML = '';
 
-  elements.forEach((el, index) => {
+  if (!Array.isArray(elements) || elements.length === 0) {
     const row = tbody.insertRow();
-    row.innerHTML = `
-      <td>${index + 1}</td>
-      <td><span class="type-badge">${el.type}</span></td>
-      <td>${escapeHtml(el.text)}</td>
-      <td><code>${escapeHtml(el.selector)}</code></td>
-    `;
+    row.innerHTML = '<td colspan="5" style="text-align: center; color: #999;">暂无测试元素</td>';
+    return;
+  }
+
+  elements.forEach((el, index) => {
+    try {
+      // 兼容多种字段名
+      const elType = el.type || el.elementType || 'unknown';
+      const elText = el.text || el.elementText || el.innerText || '';
+      const elSelector = el.selector || el.elementSelector || el.xpath || '';
+      // 兼容不同的状态字段名：status, success, actionSuccess, passed
+      const elStatus = el.status || (el.success ? 'success' : el.actionSuccess ? 'success' : 'unknown');
+      const statusClass = (elStatus === 'success' || el.success || el.actionSuccess) ? 'success' : 'error';
+      const statusIcon = (elStatus === 'success' || el.success || el.actionSuccess) ? '✓' : '✗';
+
+      const row = tbody.insertRow();
+      row.innerHTML = `
+        <td>${index + 1}</td>
+        <td><span class="type-badge">${escapeHtml(elType)}</span></td>
+        <td>${escapeHtml(elText)}</td>
+        <td><code>${escapeHtml(elSelector)}</code></td>
+        <td><span class="${statusClass}" style="color: ${statusClass === 'success' ? '#4CAF50' : '#f44336'};">${statusIcon} ${elStatus}</span></td>
+      `;
+    } catch (error) {
+      console.error(`[报告] 渲染第${index}行失败:`, error);
+    }
   });
 }
 
 // 渲染请求表
 function renderRequestsTable (apiRequests) {
   const tbody = document.getElementById('requestTableBody');
+  if (!tbody) {
+    console.warn('[报告] 未找到requestTableBody元素');
+    return;
+  }
+
   tbody.innerHTML = '';
 
-  apiRequests.slice(0, 100).forEach(req => {
+  if (!Array.isArray(apiRequests) || apiRequests.length === 0) {
     const row = tbody.insertRow();
-    const statusClass = req.status >= 400 ? 'error' : 'success';
-    const statusText = req.status ? `<span class="${statusClass}">${req.status}</span>` : 'Error';
+    row.innerHTML = '<td colspan="5" style="text-align: center; color: #999;">暂无API请求记录</td>';
+    return;
+  }
 
-    row.innerHTML = `
-      <td>${new Date(req.timestamp).toLocaleTimeString()}</td>
-      <td>${req.type}</td>
-      <td><strong>${req.method}</strong></td>
-      <td>${escapeHtml(req.url)}</td>
-      <td>${statusText}</td>
-    `;
+  apiRequests.slice(0, 100).forEach(req => {
+    try {
+      const row = tbody.insertRow();
+      const statusClass = (req.status >= 400) ? 'error' : 'success';
+      const statusText = req.status ? `<span class="${statusClass}">${req.status}</span>` : 'Error';
+
+      const timestamp = req.timestamp ? new Date(req.timestamp).toLocaleTimeString() : '-';
+      const reqType = req.type || req.requestType || '-';
+      const reqMethod = req.method || '-';
+      const reqUrl = req.url || req.href || '-';
+
+      row.innerHTML = `
+        <td>${timestamp}</td>
+        <td>${escapeHtml(reqType)}</td>
+        <td><strong>${reqMethod}</strong></td>
+        <td>${escapeHtml(reqUrl)}</td>
+        <td>${statusText}</td>
+      `;
+    } catch (error) {
+      console.error('[报告] API请求行渲染失败:', error);
+    }
   });
 
   if (apiRequests.length > 100) {
