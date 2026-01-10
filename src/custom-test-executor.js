@@ -572,7 +572,7 @@ class CustomTestExecutor {
     }));
 
     console.log('[CustomTestExecutor] 📤 发送日志事件:', stepResult.description);
-    
+
     // 添加日志
     window.dispatchEvent(new CustomEvent('floatingBallMessage', {
       detail: {

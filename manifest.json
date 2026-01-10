@@ -48,7 +48,10 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["src/floating-ball.js"],
+      "resources": [
+        "src/floating-ball.js",
+        "src/custom-test-executor.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
