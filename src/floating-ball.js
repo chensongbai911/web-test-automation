@@ -377,8 +377,10 @@
         // 页面主上下文 - 使用window事件监听
         window.addEventListener('floatingBallMessage', (event) => {
           const request = event.detail;
+          console.log('[FloatingBall] 📨 收到事件:', request.action, request);
           switch (request.action) {
             case 'updateFloatingProgress':
+              console.log('[FloatingBall] 更新进度:', request.data);
               this.updateProgress(request.data);
               break;
             case 'addFloatingLog':

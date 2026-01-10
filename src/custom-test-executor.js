@@ -549,6 +549,14 @@ class CustomTestExecutor {
     const stats = this.results.stats;
     const totalProgress = Math.round((stats.totalSteps / Math.max(1, stats.totalCases * 5)) * 100);
 
+    console.log('[CustomTestExecutor] 📤 发送进度更新事件:', {
+      totalCases: stats.totalCases,
+      passedCases: stats.passedCases,
+      failedCases: stats.failedCases,
+      current: stats.totalSteps,
+      progress: Math.min(100, totalProgress)
+    });
+
     // 🔧 直接通过window事件更新悬浮球（支持页面主上下文）
     window.dispatchEvent(new CustomEvent('floatingBallMessage', {
       detail: {
@@ -563,6 +571,8 @@ class CustomTestExecutor {
       }
     }));
 
+    console.log('[CustomTestExecutor] 📤 发送日志事件:', stepResult.description);
+    
     // 添加日志
     window.dispatchEvent(new CustomEvent('floatingBallMessage', {
       detail: {
