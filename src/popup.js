@@ -20,12 +20,12 @@ const stopTestBtn = document.getElementById('stopTestBtn');
 const viewReportBtn = document.getElementById('viewReportBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const statusSection = document.getElementById('statusSection');
-const logContainer = document.getElementById('logContainer');
-const testedCount = document.getElementById('testedCount');
-const successCount = document.getElementById('successCount');
-const failureCount = document.getElementById('failureCount');
-const apiErrorCount = document.getElementById('apiErrorCount');
-const progressBar = document.getElementById('progressBar');
+let logContainer = document.getElementById('logContainer');
+let testedCount = document.getElementById('testedCount');
+let successCount = document.getElementById('successCount');
+let failureCount = document.getElementById('failureCount');
+let apiErrorCount = document.getElementById('apiErrorCount');
+let progressBar = document.getElementById('progressBar');
 
 // 自定义测试模式的DOM
 const uploadBox = document.getElementById('uploadBox');
@@ -554,7 +554,11 @@ async function startAutoTest () {
       }
     });
 
-    // 等待后开始测试
+    // 等待标签页加载完成并确保内容脚本就绪
+    await waitForPageReady(currentTab.id, targetUrl, needWait ? 15000 : 5000);
+    await ensureContentScriptReady(currentTab.id);
+
+    // 开始测试
     setTimeout(() => {
       addLog('🔍 步骤 1/3: 分析页面结构...', 'info');
       chrome.tabs.sendMessage(currentTab.id, {
@@ -616,7 +620,7 @@ async function startAutoTest () {
         startTestBtn.disabled = false;
         stopTestBtn.disabled = true;
       });
-    }, waitTime);
+    }, 200);
   });
 }
 
@@ -688,7 +692,10 @@ async function startCustomTest () {
       }
     });
 
-    // 等待页面加载
+    // 等待页面加载并确保内容脚本就绪
+    await waitForPageReady(currentTab.id, targetUrl, 15000);
+    await ensureContentScriptReady(currentTab.id);
+
     setTimeout(() => {
       addLog('▶️ 开始执行自定义测试用例...', 'info');
       console.log('[Popup] 准备发送executeCustomTestCases消息到tab:', currentTab.id);
@@ -733,8 +740,74 @@ async function startCustomTest () {
         startTestBtn.disabled = false;
         stopTestBtn.disabled = true;
       });
-    }, 3000);
+    }, 200);
   });
+}
+
+// ==========================
+// 辅助：等待标签页加载完成
+// ==========================
+async function waitForPageReady (tabId, expectedUrl, timeoutMs = 10000) {
+  const start = Date.now();
+
+  return new Promise((resolve) => {
+    let done = false;
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      resolve();
+    };
+
+    const onUpdated = (updatedTabId, info, tab) => {
+      if (updatedTabId !== tabId) return;
+      if (info.status === 'complete' || info.status === 'loading') {
+        // 简单校验URL是否匹配目标域
+        if (!expectedUrl || (tab && tab.url && tab.url.startsWith(expectedUrl))) {
+          finish();
+        }
+      }
+    };
+
+    chrome.tabs.onUpdated.addListener(onUpdated);
+
+    // 兜底：轮询+超时
+    const interval = setInterval(() => {
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(interval);
+        finish();
+        return;
+      }
+      chrome.tabs.get(tabId, (tab) => {
+        if (!tab) return;
+        if (tab.status === 'complete') {
+          clearInterval(interval);
+          finish();
+        }
+      });
+    }, 300);
+  });
+}
+
+// ==========================
+// 辅助：确保内容脚本已就绪
+// ==========================
+async function ensureContentScriptReady (tabId, maxRetries = 40, delayMs = 300) {
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const res = await chrome.tabs.sendMessage(tabId, { action: 'ping' });
+      if (res && res.success !== undefined) {
+        return true;
+      }
+    } catch (e) {
+      // 忽略，继续重试
+    }
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  // 到此仍未就绪也不阻塞：让后续逻辑继续，内容脚本通常会随后加载
+  return false;
 }
 
 // =============================================
@@ -884,15 +957,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         progressBar.style.width = request.progress + '%';
       }
     }
-  } else if (request.action === 'testLog') {
+  } else if (request.action === 'updateStatus') {
+    // 来自content-script的状态更新（经background转发）
+    const d = request.data || {};
+    if (testedCount && successCount && failureCount && apiErrorCount && progressBar) {
+      testedCount.textContent = d.testedCount || 0;
+      successCount.textContent = d.successCount || 0;
+      failureCount.textContent = d.failureCount || 0;
+      apiErrorCount.textContent = d.apiErrorCount || 0;
+      const total = d.totalButtons || 0;
+      const pct = total > 0 ? Math.round((d.testedCount || 0) / total * 100) : 0;
+      progressBar.style.width = pct + '%';
+    }
+  } else if (request.action === 'testLog' || request.action === 'addLog') {
     // 接收来自content-script的日志
     addLog(request.message, request.type);
-  } else if (request.action === 'testCompleted') {
+  } else if (request.action === 'testCompleted' || request.action === 'testComplete') {
     // 测试完成
     testingInProgress = false;
     startTestBtn.disabled = false;
     stopTestBtn.disabled = true;
     viewReportBtn.disabled = false;
+    // 修改主界面按钮文案为“再次测试”
+    try {
+      startTestBtn.innerHTML = '<span class="icon">🔄</span> 再次测试';
+    } catch { }
 
     addLog('✅ 测试已完成', 'success');
 

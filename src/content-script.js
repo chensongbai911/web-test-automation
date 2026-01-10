@@ -16,13 +16,9 @@ window.addEventListener('error', (event) => {
     event.preventDefault();
     return true;
   }
-  // 如果是扩展自身的错误，让它正常抛出以便调试
-  console.error('[Web测试工具] 扩展内部错误:', {
-    message: event.message,
-    filename: event.filename,
-    lineno: event.lineno,
-    colno: event.colno
-  });
+  // 如果是扩展自身的错误，改为简洁日志以减少噪音
+  const errorMsg = typeof event.message === 'string' ? event.message : (event.error?.message || String(event.message || '未知错误'));
+  console.warn('[Web测试工具] 扩展内部错误:', errorMsg);
 }, true);
 
 // 🛡️ 捕获Promise rejection错误（仅第三方）
@@ -36,8 +32,9 @@ window.addEventListener('unhandledrejection', (event) => {
     console.warn('[Web测试工具] 检测到页面Promise错误（已忽略）:', event.reason);
     event.preventDefault();
   } else {
-    // 扩展自身的Promise错误，让它正常抛出以便调试
-    console.error('[Web测试工具] 扩展Promise错误（需要处理）:', event.reason);
+    // 扩展自身的Promise错误，改为简洁输出
+    const errorMsg = event.reason?.message || String(event.reason || '未知Promise错误');
+    console.warn('[Web测试工具] 扩展Promise错误:', errorMsg);
   }
 });
 
@@ -204,10 +201,13 @@ originalXHR.prototype.send = function (...args) {
 
 // 通知popup（如果popup已关闭则忽略错误）
 function notifyPopup (action, message, type = 'info') {
-  // 优先使用悬浮球显示日志
-  if (action === 'addLog' && window.floatingBallManager) {
-    console.log('[通知] 悬浮球日志:', message);
-    window.floatingBallManager.addLog(message, type);
+  // 优先通知悬浮球（通过桥接），避免直接访问页面主上下文
+  if (action === 'addLog') {
+    try {
+      notifyFloatingBall('addLog', { message, type });
+    } catch (e) {
+      // 忽略悬浮球通知错误
+    }
   }
 
   // 尝试发送到popup（可能已关闭）- 静默失败
@@ -227,22 +227,40 @@ function notifyPopup (action, message, type = 'info') {
 
 // 通知悬浮球
 function notifyFloatingBall (action, data) {
+  // 通过injector桥接 + postMessage 双通道，确保页面主上下文能接收到
   try {
-    if (window.floatingBallManager) {
-      switch (action) {
-        case 'updateProgress':
-          window.floatingBallManager.updateProgress(data);
-          break;
-        case 'addLog':
-          window.floatingBallManager.addLog(data.message, data.type);
-          break;
-        case 'updateStatus':
-          window.floatingBallManager.updateStatus(data);
-          break;
-        case 'testComplete':
-          window.floatingBallManager.setTestComplete();
-          break;
-      }
+    const actionMap = {
+      updateProgress: 'updateFloatingProgress',
+      addLog: 'addFloatingLog',
+      updateStatus: 'updateFloatingStatus',
+      testComplete: 'testComplete',
+      show: 'showFloatingBall',
+      hide: 'hideFloatingBall'
+    };
+
+    const mapped = actionMap[action] || action;
+
+    // 通道1：runtime → injector → window 事件
+    chrome.runtime.sendMessage({
+      action: mapped,
+      data: data,
+      message: data?.message,
+      type: data?.type,
+      status: data?.status
+    }).catch(() => { });
+
+    // 通道2：直接 postMessage 到页面主上下文（兜底）
+    try {
+      window.postMessage({
+        __floatingBall: true,
+        action: mapped,
+        data: data,
+        message: data?.message,
+        type: data?.type,
+        status: data?.status
+      }, '*');
+    } catch (e) {
+      // 忽略 postMessage 错误
     }
   } catch (e) {
     console.log('无法通知悬浮球:', e);
@@ -325,27 +343,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('[Web测试工具] 测试用例数据:', request.testCases);
     console.log('[Web测试工具] 开始执行自定义测试用例...');
 
-    // 立即显示悬浮球
-    if (window.floatingBallManager) {
-      console.log('[Web测试工具] 显示悬浮球...');
-      window.floatingBallManager.showBall();
-    } else {
-      console.log('[Web测试工具] ⚠️  FloatingBallManager 尚未初始化，等待初始化...');
-      // 等待FloatingBallManager初始化
-      let retries = 0;
-      const waitForManager = setInterval(() => {
-        if (window.floatingBallManager) {
-          console.log('[Web测试工具] FloatingBallManager 已初始化，显示悬浮球');
-          window.floatingBallManager.showBall();
-          clearInterval(waitForManager);
-        }
-        retries++;
-        if (retries > 20) { // 最多等2秒
-          console.warn('[Web测试工具] ⚠️  FloatingBallManager 初始化超时');
-          clearInterval(waitForManager);
-        }
-      }, 100);
-    }
+    // 立即显示悬浮球（通过injector桥接，不直接访问页面上下文）
+    console.log('[Web测试工具] 请求显示悬浮球');
+    notifyFloatingBall('show');
 
     (async () => {
       try {
@@ -931,38 +931,47 @@ async function performInteraction (item, index, total) {
 
         if (forms.length > 0) {
           for (const form of forms) {
-            // 检查表单是否可见且有输入字段
-            if (form.offsetParent !== null) {
-              const inputs = form.querySelectorAll('input:not([type="hidden"]), textarea, select, [class*="select"], [class*="picker"]');
-              if (inputs.length > 0) {
-                notifyPopup('addLog', `  📝 检测到表单 (${inputs.length}个字段)，准备填充...`, 'info');
+            try {
+              // 检查表单是否可见且有输入字段
+              if (form.offsetParent !== null) {
+                const inputs = form.querySelectorAll('input:not([type="hidden"]), textarea, select, [class*="select"], [class*="picker"]');
+                if (inputs.length > 0) {
+                  notifyPopup('addLog', `  📝 检测到表单 (${inputs.length}个字段)，准备填充...`, 'info');
 
-                // 确保复杂表单处理器已初始化
-                if (!window.complexFormHandler && typeof ComplexFormHandler !== 'undefined') {
-                  window.complexFormHandler = new ComplexFormHandler();
-                  console.log('[Web测试工具] 临时初始化复杂表单处理器');
-                }
-
-                // 使用复杂表单处理器
-                if (window.complexFormHandler) {
-                  try {
-                    const formResult = await window.complexFormHandler.fillComplexForm(form);
-                    if (formResult.success) {
-                      notifyPopup('addLog', `  ✅ 表单填充并保存成功`, 'success');
-                      formProcessed = true;
-                    } else {
-                      notifyPopup('addLog', `  ⚠️ 表单填充遇到问题: ${formResult.error || '未知'}`, 'warning');
-                    }
-                  } catch (err) {
-                    console.error('[Web测试工具] 表单处理异常:', err);
-                    notifyPopup('addLog', `  ⚠️ 表单处理失败: ${err.message}`, 'warning');
+                  // 确保复杂表单处理器已初始化
+                  if (!window.complexFormHandler && typeof ComplexFormHandler !== 'undefined') {
+                    window.complexFormHandler = new ComplexFormHandler();
+                    console.log('[Web测试工具] 临时初始化复杂表单处理器');
                   }
-                } else {
-                  notifyPopup('addLog', `  ⚠️ 复杂表单处理器未加载，跳过表单`, 'warning');
-                }
 
-                break; // 只处理第一个可见表单
+                  // 使用复杂表单处理器（设置超时避免卡死）
+                  if (window.complexFormHandler) {
+                    try {
+                      const formResultPromise = window.complexFormHandler.fillComplexForm(form);
+                      const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('表单处理超时')), 5000)
+                      );
+                      const formResult = await Promise.race([formResultPromise, timeoutPromise]);
+                      if (formResult.success) {
+                        notifyPopup('addLog', `  ✅ 表单填充并保存成功`, 'success');
+                        formProcessed = true;
+                      } else {
+                        notifyPopup('addLog', `  ⚠️ 表单填充遇到问题: ${formResult.error || '未知'}`, 'warning');
+                      }
+                    } catch (err) {
+                      console.error('[Web测试工具] 表单处理异常:', err);
+                      notifyPopup('addLog', `  ⚠️ 表单处理失败: ${err.message}`, 'warning');
+                    }
+                  } else {
+                    notifyPopup('addLog', `  ⚠️ 复杂表单处理器未加载，跳过表单`, 'warning');
+                  }
+
+                  break; // 只处理第一个可见表单
+                }
               }
+            } catch (formError) {
+              console.error('[Web测试工具] 表单循环异常:', formError);
+              // 继续下一个表单
             }
           }
         }
@@ -1342,25 +1351,47 @@ async function startAutomatedTest () {
 
       // 第四步：测试元素
       console.log('[Web测试工具] 第四步：开始测试元素');
+      console.log(`[Web测试工具] 总共需要测试 ${uniqueElements.length} 个元素，testActive=${testActive}`);
       for (let i = 0; i < uniqueElements.length && testActive; i++) {
         try {
-          console.log(`[Web测试工具] 测试元素 ${i + 1}/${uniqueElements.length}`);
+          console.log(`[Web测试工具] 开始测试第 ${i + 1}/${uniqueElements.length} 个元素，testActive=${testActive}`);
           await performInteraction(uniqueElements[i], i, uniqueElements.length);
+          console.log(`[Web测试工具] 完成测试第 ${i + 1}/${uniqueElements.length} 个元素`);
           await delay(testConfig.delay || 1200);
+
+          // 检测页面是否被刷新或跳转
+          if (!testActive) {
+            console.warn('[Web测试工具] testActive被设为false，提前终止测试');
+            notifyPopup('addLog', `⚠️ 测试在第${i + 1}个元素后被中断`, 'warning');
+            break;
+          }
         } catch (elemError) {
-          console.error(`[Web测试工具] 元素 ${i} 测试失败:`, elemError);
+          console.error(`[Web测试工具] 元素 ${i + 1} 测试失败:`, elemError);
+          notifyPopup('addLog', `  ✗ 元素 ${i + 1} 测试异常: ${elemError.message}`, 'error');
           testStats.failureCount++;
           testStats.testedCount++;
+          updateStatus();
         }
       }
 
-      console.log('[Web测试工具] 所有元素测试完成');
-      notifyPopup('addLog', `✓ 测试完成`, 'success');
+      console.log(`[Web测试工具] 测试循环结束，已测试 ${testStats.testedCount}/${uniqueElements.length} 个元素`);
+
+      const completedCount = testStats.testedCount;
+      const totalCount = uniqueElements.length;
+      console.log(`[Web测试工具] 测试流程结束，已完成 ${completedCount}/${totalCount} 个元素`);
+
+      if (completedCount === totalCount) {
+        notifyPopup('addLog', `✅ 测试全部完成 (${completedCount}/${totalCount})`, 'success');
+      } else {
+        notifyPopup('addLog', `⚠️ 测试部分完成 (${completedCount}/${totalCount})`, 'warning');
+      }
 
       // 保存测试报告
       saveTestReport(testStats, uniqueElements, apiRequests);
 
-      notifyPopup('testComplete', 'Test Complete', 'success');
+      // 发送测试完成消息
+      chrome.runtime.sendMessage({ action: 'testComplete' }).catch(() => { });
+      chrome.runtime.sendMessage({ action: 'testCompleted' }).catch(() => { });
       notifyFloatingBall('testComplete', {});
 
     } catch (elemError) {

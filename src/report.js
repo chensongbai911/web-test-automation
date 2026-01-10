@@ -152,7 +152,7 @@ function renderEnhancedReport () {
       renderElementApiMapping();
     }
   } catch (error) {
-    console.error('[报告页面] 渲染错误:', error);
+    console.error('[报告页面] 渲染错误:', error.message || String(error));
   }
 }
 
@@ -501,7 +501,7 @@ function renderPieChart (elements) {
       }
     });
   } catch (error) {
-    console.error('[报告] 饼图渲染失败:', error);
+    console.error('[报告] 饼图渲染失败:', error.message || String(error));
   }
 }
 
@@ -571,7 +571,7 @@ function renderBarChart (elements) {
       }
     });
   } catch (error) {
-    console.error('[报告] 柱状图渲染失败:', error);
+    console.error('[报告] 柱状图渲染失败:', error.message || String(error));
   }
 }
 
@@ -631,7 +631,7 @@ function renderElementsTable (elements) {
         <td><span class="${statusClass}" style="color: ${statusClass === 'success' ? '#4CAF50' : '#f44336'};">${statusIcon} ${elStatus}</span></td>
       `;
     } catch (error) {
-      console.error(`[报告] 渲染第${index}行失败:`, error);
+      console.error(`[报告] 渲染第${index}行失败:`, error.message || String(error));
     }
   });
 }
@@ -671,7 +671,7 @@ function renderRequestsTable (apiRequests) {
         <td>${statusText}</td>
       `;
     } catch (error) {
-      console.error('[报告] API请求行渲染失败:', error);
+      console.error('[报告] API请求行渲染失败:', error.message || String(error));
     }
   });
 

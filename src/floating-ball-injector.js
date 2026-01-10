@@ -9,7 +9,7 @@
   // ============================================
   // 第1步：在Content Script上下文中注入DOM容器
   // ============================================
-  function injectFloatingBallDOM() {
+  function injectFloatingBallDOM () {
     // 检查是否已经注入
     if (document.getElementById('floating-ball-container')) {
       console.log('[FloatingBallInjector] DOM容器已存在，跳过注入');
@@ -111,21 +111,21 @@
   }
 
   // 然后注入JS代码到页面主上下文
-  
+
   // 1. 注入 CustomTestExecutor
   const executorScript = document.createElement('script');
   executorScript.src = chrome.runtime.getURL('src/custom-test-executor.js');
   executorScript.type = 'text/javascript';
-  
+
   executorScript.onload = function () {
     console.log('[FloatingBallInjector] ✅ CustomTestExecutor代码已注入到页面主上下文');
     this.remove();
   };
-  
+
   executorScript.onerror = function () {
     console.error('[FloatingBallInjector] ❌ CustomTestExecutor代码注入失败');
   };
-  
+
   (document.head || document.documentElement).appendChild(executorScript);
 
   // 2. 注入 FloatingBall（稍微延迟确保依赖加载完成）
@@ -149,7 +149,7 @@
   // ============================================
   // 第3步：设置消息桥接
   // ============================================
-  
+
   // 🔗 设置消息桥接：从Content Script转发chrome.runtime消息到页面主上下文
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 将chrome.runtime消息转发为window事件
@@ -168,7 +168,30 @@
       console.log('[FloatingBallInjector] 📨 转发消息:', request.action);
     }
 
+    // 补充：测试完成状态转发到页面主上下文（用于更新悬浮球UI）
+    if (request.action === 'testComplete') {
+      window.dispatchEvent(new CustomEvent('floatingBallMessage', {
+        detail: request
+      }));
+      console.log('[FloatingBallInjector] 📨 转发消息: testComplete');
+    }
+
     return true;
+  });
+
+  // 🔗 反向桥接：从页面主上下文转发消息到background（通过chrome.runtime）
+  window.addEventListener('floatingBallToContent', (event) => {
+    const request = event.detail;
+    console.log('[FloatingBallInjector] 📤 从页面主上下文接收消息，转发到background:', request.action);
+
+    // 转发到background
+    chrome.runtime.sendMessage(request, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[FloatingBallInjector] 转发消息失败:', chrome.runtime.lastError);
+      } else {
+        console.log('[FloatingBallInjector] 消息已转发到background:', request.action);
+      }
+    });
   });
 
   console.log('[FloatingBallInjector] ✅ 初始化完成');

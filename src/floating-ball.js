@@ -25,17 +25,17 @@
       console.log('[FloatingBall] 初始化悬浮球管理器');
       // ⚠️ 注意：DOM容器由floating-ball-injector.js在Content Script上下文中注入
       // 这里只需要等待DOM准备好，然后绑定事件
-      
+
       // 绑定事件（等待DOM准备好）
       this.waitForDOMAndBind();
-      
+
       // 监听来自popup的消息
       this.setupMessageListener();
       // 默认不自动显示悬浮球，等待测试开始时显示
       // this.showBall(); // 注释掉自动显示
     }
 
-    waitForDOMAndBind() {
+    waitForDOMAndBind () {
       const checkDOM = () => {
         const ball = document.getElementById('floating-ball');
         if (ball) {
@@ -221,10 +221,11 @@
     }
 
     openMainPopup () {
-      // 打开插件弹窗（通过background.js转发）
-      chrome.runtime.sendMessage({
-        action: 'openPopup'
-      });
+      // 打开插件弹窗（通过window事件发送到content script，再转发到background）
+      console.log('[FloatingBall] 请求打开主弹窗');
+      window.dispatchEvent(new CustomEvent('floatingBallToContent', {
+        detail: { action: 'openPopup' }
+      }));
     }
 
     togglePause () {
@@ -238,18 +239,25 @@
 
       if (isPaused) {
         btn.textContent = '暂停';
-        chrome.runtime.sendMessage({ action: 'resumeTest' });
+        console.log('[FloatingBall] 请求继续测试');
+        window.dispatchEvent(new CustomEvent('floatingBallToContent', {
+          detail: { action: 'resumeTest' }
+        }));
       } else {
         btn.textContent = '继续';
-        chrome.runtime.sendMessage({ action: 'pauseTest' });
+        console.log('[FloatingBall] 请求暂停测试');
+        window.dispatchEvent(new CustomEvent('floatingBallToContent', {
+          detail: { action: 'pauseTest' }
+        }));
       }
     }
 
     openReport () {
-      // 打开报告页面
-      chrome.runtime.sendMessage({
-        action: 'openReport'
-      });
+      // 打开报告页面（通过window事件发送到content script）
+      console.log('[FloatingBall] 请求打开测试报告');
+      window.dispatchEvent(new CustomEvent('floatingBallToContent', {
+        detail: { action: 'openReport' }
+      }));
     }
 
     setTestComplete () {
@@ -278,39 +286,16 @@
     }
 
     setupMessageListener () {
-      // 🔧 检查是否在Content Script上下文（有chrome API）还是页面主上下文
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-        // Content Script上下文 - 使用chrome.runtime.onMessage
-        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-          switch (request.action) {
-            case 'updateFloatingProgress':
-              this.updateProgress(request.data);
-              break;
-            case 'addFloatingLog':
-              this.addLog(request.message, request.type);
-              break;
-            case 'testComplete':
-              // 测试完成，更新UI
-              this.setTestComplete();
-              break;
-            case 'updateFloatingStatus':
-              this.updateStatus(request.status);
-              break;
-            case 'showFloatingBall':
-              this.showBall();
-              break;
-            case 'hideFloatingBall':
-              this.hideBall();
-              break;
-          }
-          sendResponse({ success: true });
-        });
-        console.log('[FloatingBall] ✅ 使用chrome.runtime消息监听（Content Script上下文）');
-      } else {
-        // 页面主上下文 - 使用window事件监听
-        window.addEventListener('floatingBallMessage', (event) => {
-          const request = event.detail;
-          console.log('[FloatingBall] 📨 收到事件:', request.action, request);
+      // 🔧 此脚本通过<script>标签注入到页面主上下文，无法访问chrome API
+      // 必须使用window事件监听，由floating-ball-injector.js转发消息
+      console.log('[FloatingBall] 初始化消息监听器（页面主上下文）');
+
+      // 页面主上下文 - 使用window事件监听
+      window.addEventListener('floatingBallMessage', (event) => {
+        const request = event.detail;
+        console.log('[FloatingBall] 📨 收到事件:', request.action, request);
+
+        try {
           switch (request.action) {
             case 'updateFloatingProgress':
               console.log('[FloatingBall] 更新进度:', request.data);
@@ -331,10 +316,47 @@
             case 'hideFloatingBall':
               this.hideBall();
               break;
+            default:
+              console.log('[FloatingBall] 未知操作:', request.action);
           }
-        });
-        console.log('[FloatingBall] ✅ 使用window事件监听（页面主上下文）');
-      }
+        } catch (error) {
+          console.error('[FloatingBall] 处理消息时出错:', error);
+        }
+      });
+
+      // 兜底：支持通过 window.postMessage 的跨上下文通信
+      window.addEventListener('message', (event) => {
+        try {
+          const data = event.data;
+          if (!data || !data.__floatingBall) return;
+          const action = data.action;
+          console.log('[FloatingBall] 📨 postMessage事件:', action, data);
+          switch (action) {
+            case 'updateFloatingProgress':
+              this.updateProgress(data.data || {});
+              break;
+            case 'addFloatingLog':
+              this.addLog(data.message, data.type);
+              break;
+            case 'testComplete':
+              this.setTestComplete();
+              break;
+            case 'updateFloatingStatus':
+              this.updateStatus(data.status);
+              break;
+            case 'showFloatingBall':
+              this.showBall();
+              break;
+            case 'hideFloatingBall':
+              this.hideBall();
+              break;
+          }
+        } catch (e) {
+          console.log('[FloatingBall] postMessage处理错误:', e);
+        }
+      });
+
+      console.log('[FloatingBall] ✅ 消息监听器已设置（使用window事件）');
     }
 
     showBall () {
