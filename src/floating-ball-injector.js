@@ -8,16 +8,16 @@
   const executorScript = document.createElement('script');
   executorScript.src = chrome.runtime.getURL('src/custom-test-executor.js');
   executorScript.type = 'text/javascript';
-  
+
   executorScript.onload = function () {
     console.log('[FloatingBallInjector] ✅ CustomTestExecutor代码已注入到页面主上下文');
     this.remove();
   };
-  
+
   executorScript.onerror = function () {
     console.error('[FloatingBallInjector] ❌ CustomTestExecutor代码注入失败');
   };
-  
+
   (document.head || document.documentElement).appendChild(executorScript);
 
   // 2. 注入 FloatingBall（稍微延迟确保依赖加载完成）

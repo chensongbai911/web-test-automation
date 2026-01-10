@@ -691,11 +691,14 @@ async function startCustomTest () {
     // 等待页面加载
     setTimeout(() => {
       addLog('▶️ 开始执行自定义测试用例...', 'info');
+      console.log('[Popup] 准备发送executeCustomTestCases消息到tab:', currentTab.id);
+      console.log('[Popup] 测试用例数据:', uploadedTestCases);
 
       chrome.tabs.sendMessage(currentTab.id, {
         action: 'executeCustomTestCases',
         testCases: uploadedTestCases
       }).then((response) => {
+        console.log('[Popup] ✅ 收到content-script响应:', response);
         if (response && response.success) {
           addLog('✓ 测试执行命令已发送', 'success');
 
@@ -724,6 +727,7 @@ async function startCustomTest () {
           setTimeout(sendShowBallMessage, 200);
         }
       }).catch((error) => {
+        console.error('[Popup] ❌ 发送executeCustomTestCases消息失败:', error);
         addLog('❌ 测试执行失败: ' + error.message, 'error');
         testingInProgress = false;
         startTestBtn.disabled = false;

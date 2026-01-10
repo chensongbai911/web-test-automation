@@ -321,6 +321,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   } else if (request.action === 'executeCustomTestCases') {
     // 🆕 执行自定义测试用例
+    console.log('[Web测试工具] ✅ 收到executeCustomTestCases消息');
+    console.log('[Web测试工具] 测试用例数据:', request.testCases);
     console.log('[Web测试工具] 开始执行自定义测试用例...');
 
     // 立即显示悬浮球
