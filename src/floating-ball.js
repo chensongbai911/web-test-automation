@@ -23,104 +23,37 @@
 
     init () {
       console.log('[FloatingBall] 初始化悬浮球管理器');
-      // 注入悬浮球HTML
-      this.injectFloatingBall();
+      // ⚠️ 注意：DOM容器由floating-ball-injector.js在Content Script上下文中注入
+      // 这里只需要等待DOM准备好，然后绑定事件
+      
+      // 绑定事件（等待DOM准备好）
+      this.waitForDOMAndBind();
+      
       // 监听来自popup的消息
       this.setupMessageListener();
       // 默认不自动显示悬浮球，等待测试开始时显示
       // this.showBall(); // 注释掉自动显示
     }
 
+    waitForDOMAndBind() {
+      const checkDOM = () => {
+        const ball = document.getElementById('floating-ball');
+        if (ball) {
+          console.log('[FloatingBall] ✅ DOM容器已就绪，绑定事件');
+          this.bindEvents();
+        } else {
+          console.log('[FloatingBall] ⏳ 等待DOM容器...');
+          setTimeout(checkDOM, 100);
+        }
+      };
+      checkDOM();
+    }
+
     injectFloatingBall () {
-      // 检查是否已经注入
-      if (document.getElementById('floating-ball-container')) {
-        return;
-      }
-
-      // 创建容器（初始状态：隐藏）
-      const container = document.createElement('div');
-      container.id = 'floating-ball-container';
-      container.className = 'floating-ball-container';
-      container.style.display = 'none'; // 🔧 初始状态隐藏，等待测试开始时显示
-      container.innerHTML = `
-      <!-- 悬浮球 -->
-      <div class="floating-ball" id="floating-ball">
-        <div class="floating-ball-icon">📊</div>
-        <div class="floating-ball-status testing" id="floating-ball-status">
-          <span id="status-count">0</span>
-        </div>
-        <div class="floating-ball-tooltip">点击查看进度</div>
-      </div>
-
-      <!-- 进度面板 -->
-      <div class="progress-panel" id="progress-panel">
-        <!-- 头部 -->
-        <div class="progress-panel-header">
-          <h3>📊 测试进度</h3>
-          <button class="progress-panel-close" id="panel-close">✕</button>
-        </div>
-
-        <!-- 内容 -->
-        <div class="progress-panel-content">
-          <!-- 统计卡片 -->
-          <div class="progress-stats">
-            <div class="stat-card success">
-              <div class="label">成功</div>
-              <div class="value" id="stat-success">0</div>
-            </div>
-            <div class="stat-card error">
-              <div class="label">失败</div>
-              <div class="value" id="stat-failed">0</div>
-            </div>
-            <div class="stat-card warning">
-              <div class="label">错误</div>
-              <div class="value" id="stat-error">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="label">总数</div>
-              <div class="value" id="stat-total">0</div>
-            </div>
-          </div>
-
-          <!-- 进度条 -->
-          <div class="progress-bar-container">
-            <div class="progress-bar-label">
-              <span>测试进度</span>
-              <span id="progress-percent">0%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" id="progress-bar-fill"></div>
-            </div>
-          </div>
-
-          <!-- 日志列表 -->
-          <div class="log-list">
-            <div class="log-list-header">
-              <span>最近日志</span>
-              <button id="clear-logs">清空</button>
-            </div>
-            <div class="log-items" id="log-items">
-              <div class="log-item">等待测试开始...</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 操作按钮 -->
-        <div class=\"progress-panel-actions\">
-          <button id=\"open-main-popup\" class=\"primary\">打开主界面</button>
-          <button id=\"view-report-btn\" style=\"display:none;\">📊 查看报告</button>
-          <button id=\"pause-resume-btn\">暂停</button>
-        </div>
-      </div>
-    `;
-
-      document.body.appendChild(container);
-
-      // 加载CSS
-      this.injectCSS();
-
-      // 绑定事件
-      this.bindEvents();
+      // ⚠️ 此方法已废弃：DOM由floating-ball-injector.js在Content Script上下文中注入
+      // 保留方法以避免代码中的调用出错
+      console.warn('[FloatingBall] injectFloatingBall()已废弃，DOM由injector负责');
+      return; // 直接返回
     }
 
     injectCSS () {
