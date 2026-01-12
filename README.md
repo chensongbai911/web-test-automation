@@ -2,6 +2,14 @@
 
 一个功能强大的 Chrome 浏览器插件，可以自动化测试网页的所有功能按钮，监控 API 请求，并生成详细的可视化测试报告。
 
+## 📚 快速链接
+
+- **🚀 快速开始**：[QUICK_REFERENCE.md](QUICK_REFERENCE.md) - 快速参考卡（5分钟上手）
+- **📖 完整指南**：[QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md) - 详细使用指南
+- **🔧 技术规格**：[WORKFLOW_TEST_REPORT.md](WORKFLOW_TEST_REPORT.md) - 三阶段工作流技术规格
+- **✅ 完成报告**：[COMPLETION_REPORT_2026_01_12.md](COMPLETION_REPORT_2026_01_12.md) - 最终完成报告
+- **📋 执行摘要**：[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - 核心成果一览
+
 ## 功能特性
 
 ### 🎯 核心功能
