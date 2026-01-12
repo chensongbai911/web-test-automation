@@ -132,17 +132,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // 监听tab更新（刷新页面）
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // 只有在测试真正开始后，页面刷新才清除状态
+  // 保持测试状态：页面刷新或导航期间不清除 testingState，交由内容脚本继续执行
   if (changeInfo.status === 'loading' && tabId === testingTabId && testingStarted) {
-    console.log('测试进行中，页面被刷新，清除测试状态');
-    testingTabId = null;
-    testingStarted = false;
-    // 清除测试状态
-    chrome.storage.local.set({
-      testingState: {
-        inProgress: false
-      }
-    });
+    console.log('测试进行中，页面进入loading状态，保持测试标记');
+    // 可选：更新当前URL（如果可用），不改动 inProgress
+    try {
+      chrome.storage.local.get(['testingState'], (result) => {
+        const state = result.testingState || { inProgress: true };
+        const nextState = {
+          ...state,
+          inProgress: true,
+          url: tab?.url || state.url,
+          tabId: testingTabId
+        };
+        chrome.storage.local.set({ testingState: nextState });
+      });
+    } catch { }
   }
   if (changeInfo.status === 'complete') {
     console.log('Tab loaded:', tab.url);

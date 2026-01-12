@@ -290,10 +290,16 @@
       // 必须使用window事件监听，由floating-ball-injector.js转发消息
       console.log('[FloatingBall] 初始化消息监听器（页面主上下文）');
 
+      // 🔥 通知 injector 浮球脚本已就绪（等待缓存的消息）
+      console.log('[FloatingBall] 📢 发送 floatingBallReady 事件到 injector');
+      window.dispatchEvent(new CustomEvent('floatingBallReady', { detail: {} }));
+
       // 页面主上下文 - 使用window事件监听
       window.addEventListener('floatingBallMessage', (event) => {
         const request = event.detail;
-        console.log('[FloatingBall] 📨 收到事件:', request.action, request);
+        console.log('[FloatingBall] ========== 📨 收到floatingBallMessage事件 ==========');
+        console.log('[FloatingBall] Action:', request.action);
+        console.log('[FloatingBall] Detail:', request);
 
         try {
           switch (request.action) {
@@ -311,7 +317,9 @@
               this.updateStatus(request.status);
               break;
             case 'showFloatingBall':
+              console.log('[FloatingBall] ========== 🔥 执行showBall() ==========');
               this.showBall();
+              console.log('[FloatingBall] ✅ showBall()执行完成');
               break;
             case 'hideFloatingBall':
               this.hideBall();
@@ -360,16 +368,22 @@
     }
 
     showBall () {
+      console.log('[FloatingBall] ========== 🔥 showBall()开始执行 ==========');
       const container = document.getElementById('floating-ball-container');
+      console.log('[FloatingBall] container元素:', container);
+
       if (container) {
+        console.log('[FloatingBall] container当前display:', container.style.display);
         container.style.display = 'block';
         this.isVisible = true;
-        console.log('[FloatingBall] ✅ 悬浮球已显示');
+        console.log('[FloatingBall] ✅ 悬浮球已显示（display=block）');
+        console.log('[FloatingBall] container最终display:', container.style.display);
       } else {
-        console.warn('[FloatingBall] ⚠️  悬浮球容器不存在，尝试重新注入');
+        console.warn('[FloatingBall] ⚠️ 悬浮球容器不存在，尝试重新注入');
         try {
           this.injectFloatingBall();
           const newContainer = document.getElementById('floating-ball-container');
+          console.log('[FloatingBall] 重新注入后的container:', newContainer);
           if (newContainer) {
             newContainer.style.display = 'block';
             this.isVisible = true;

@@ -582,13 +582,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         const plan = await window.aiIntentEngine.understandIntent(request.userIntent || '自动化测试', pageContext);
+        console.log('[Web测试工具] AI计划生成完成:', plan);
         sendResponse({ success: true, plan });
       } catch (error) {
         console.error('[Web测试工具] startIntelligentTest 错误:', error);
         sendResponse({ success: false, error: error.message || String(error) });
       }
     })();
-    return true;
     return true; // 异步响应
   } else if (request.action === 'executeCustomTestCases') {
     // 🆕 执行自定义测试用例
@@ -654,14 +654,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     testActive = false;
     sendResponse({ success: true });
   } else if (request.action === 'showFloatingBall') {
-    if (window.floatingBallManager) {
-      window.floatingBallManager.showBall();
+    console.log('[Web测试工具] ========== 🔥 收到showFloatingBall消息 ==========');
+    console.log('[Web测试工具] 准备通过CustomEvent发送到页面主上下文');
+
+    try {
+      // 🔥 通过自定义事件发送到页面主上下文（floating-ball.js监听此事件）
+      const event = new CustomEvent('floatingBallMessage', {
+        detail: { action: 'showFloatingBall' }
+      });
+      console.log('[Web测试工具] 创建CustomEvent完成:', event);
+
+      window.dispatchEvent(event);
+      console.log('[Web测试工具] ✅ CustomEvent已发送（floatingBallMessage）');
+
+      sendResponse({ success: true, message: '悬浮球显示命令已发送' });
+    } catch (err) {
+      console.error('[Web测试工具] ❌ 发送CustomEvent失败:', err);
+      sendResponse({ success: false, error: err.message });
     }
-    sendResponse({ success: true });
   } else if (request.action === 'hideFloatingBall') {
-    if (window.floatingBallManager) {
-      window.floatingBallManager.hideBall();
-    }
+    console.log('[Web测试工具] 收到hideFloatingBall消息，通过事件隐藏悬浮球');
+    // 🔥 通过自定义事件发送到页面主上下文
+    window.dispatchEvent(new CustomEvent('floatingBallMessage', {
+      detail: { action: 'hideFloatingBall' }
+    }));
     sendResponse({ success: true });
   } else if (request.action === 'pauseTest') {
     testActive = false;
@@ -2192,6 +2208,15 @@ async function startAutomatedTest () {
   // 🔴 DEBUG: 立即输出日志，确保函数被调用
   console.log('========== [CRITICAL] startAutomatedTest被调用 ==========');
   console.log('[Web测试工具] testActive设置为true');
+
+  // 🔥 确保在自动测试开始时显示悬浮球（双通道：injector转发 + postMessage 兜底）
+  try {
+    notifyFloatingBall('show');
+  } catch (e) {
+    try {
+      window.postMessage({ __floatingBall: true, action: 'showFloatingBall' }, '*');
+    } catch { }
+  }
 
   try {
     console.log('[Web测试工具] ⏱️  startAutomatedTest开始执行');

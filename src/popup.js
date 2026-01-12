@@ -3,6 +3,17 @@
  * 包含自动分析和自定义测试两个模式
  */
 
+// ⚠️ 最早的日志 - 不依赖任何初始化
+window.console = window.console || {};
+window.console.log = window.console.log || function () { };
+
+console.log('');
+console.log('╔════════════════════════════════════════════════════════╗');
+console.log('║         [Popup] popup.js 文件加载开始                    ║');
+console.log('║         时间:', new Date().toLocaleString());
+console.log('╚════════════════════════════════════════════════════════╝');
+console.log('');
+
 // =============================================
 // 全局变量和DOM元素获取
 // =============================================
@@ -17,6 +28,12 @@ const customTab = document.getElementById('custom-tab');
 const urlInput = document.getElementById('urlInput');
 const startTestBtn = document.getElementById('startTestBtn');
 const startIntelligentTestBtn = document.getElementById('startIntelligentTestBtn');
+
+console.log('[Popup] DOM元素获取结果:');
+console.log('[Popup] - urlInput:', urlInput);
+console.log('[Popup] - startTestBtn:', startTestBtn);
+console.log('[Popup] - startIntelligentTestBtn:', startIntelligentTestBtn);
+
 // 全局加载提示（用于多阶段进度显示）
 const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
 const globalLoadingEmoji = document.getElementById('globalLoadingEmoji');
@@ -411,26 +428,59 @@ function formatFileSize (bytes) {
 // 初始化
 // =============================================
 
+console.log('[Popup] 注册 DOMContentLoaded 事件监听器...');
+
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('[Popup] 页面已加载');
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════╗');
+  console.log('║  [Popup] DOMContentLoaded 事件已触发！现在初始化...      ║');
+  console.log('║  时间:', new Date().toLocaleString());
+  console.log('╚════════════════════════════════════════════════════════╝');
+  console.log('');
 
   // 初始化Qwen
   initializeQwen();
 
   // 首先获取当前活动标签页，自动填充URL
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const currentActiveTab = tabs[0];
+    console.log('[Popup] 🔥 tabs.query 回调执行');
+    console.log('[Popup] 查询到的标签页:', tabs);
+
+    if (chrome.runtime.lastError) {
+      console.error('[Popup] ❌ tabs.query 错误:', chrome.runtime.lastError);
+    }
+
+    const currentActiveTab = tabs && tabs[0];
 
     if (currentActiveTab && currentActiveTab.url) {
-      if (!currentActiveTab.url.startsWith('chrome://') &&
-        !currentActiveTab.url.startsWith('chrome-extension://') &&
-        !currentActiveTab.url.startsWith('about:')) {
-        urlInput.value = currentActiveTab.url;
+      const url = currentActiveTab.url;
+      console.log('[Popup] 当前标签页URL:', url);
+
+      // 排除chrome内部页面
+      if (!url.startsWith('chrome://') &&
+        !url.startsWith('chrome-extension://') &&
+        !url.startsWith('edge://') &&
+        !url.startsWith('about:')) {
+        console.log('[Popup] 自动填充URL到输入框:', url);
+        urlInput.value = url;
+      } else {
+        console.log('[Popup] 跳过chrome内部页面，不自动填充');
       }
+    } else {
+      console.log('[Popup] 未找到当前标签页或URL');
     }
 
     // 恢复配置
+    console.log('[Popup] 🔥 准备调用 storage.local.get');
     chrome.storage.local.get(['savedConfig', 'testingState'], (result) => {
+      console.log('[Popup] 🔥 storage.get 回调执行！');
+      console.log('[Popup] result:', result);
+
+      if (chrome.runtime.lastError) {
+        console.error('[Popup] ❌ storage.get 错误:', chrome.runtime.lastError);
+        return;
+      }
+
       if (result.savedConfig) {
         const config = result.savedConfig;
         testInteraction.checked = config.testInteraction !== false;
@@ -444,38 +494,396 @@ document.addEventListener('DOMContentLoaded', () => {
         timeoutInput.value = config.timeout || 30;
       }
 
+      // 恢复测试统计数据
+      console.log('[Popup] 检查 testStats:', result.testStats);
+      if (result.testStats) {
+        const stats = result.testStats;
+        console.log('[Popup] 🔥 检测到保存的测试统计数据:', stats);
+
+        // 🔥 关键修复：如果 statusSection 还没显示，需要先创建它
+        // 这样才能恢复 testedCount 等元素
+        if (!testedCount || !successCount || !failureCount || !apiErrorCount) {
+          console.log('[Popup] 🔥 statusSection 还未创建，先创建它来恢复数据');
+          statusSection.style.display = 'block';
+          statusSection.innerHTML = `
+            <h3>测试状态</h3>
+            <div class="status-bar">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="status-info">
+              <p>已测试项目: <span id="testedCount">0</span></p>
+              <p>成功: <span id="successCount">0</span></p>
+              <p>失败: <span id="failureCount">0</span></p>
+              <p>验证失败: <span id="apiErrorCount">0</span></p>
+            </div>
+            <div class="log-area">
+              <div id="logContainer" class="log-container"></div>
+            </div>
+          `;
+
+          // 重新获取 DOM 元素
+          testedCount = document.getElementById('testedCount');
+          successCount = document.getElementById('successCount');
+          failureCount = document.getElementById('failureCount');
+          apiErrorCount = document.getElementById('apiErrorCount');
+          progressBar = document.getElementById('progressBar');
+          logContainer = document.getElementById('logContainer');
+        }
+
+        // 现在恢复数据
+        if (testedCount) testedCount.textContent = stats.testedCount || 0;
+        if (successCount) successCount.textContent = stats.successCount || 0;
+        if (failureCount) failureCount.textContent = stats.failureCount || 0;
+        if (apiErrorCount) apiErrorCount.textContent = stats.apiErrorCount || 0;
+        if (progressBar && stats.progress) {
+          progressBar.style.width = stats.progress + '%';
+        }
+        console.log('[Popup] ✅ 测试统计数据已恢复:', stats);
+
+        // 🔥 恢复日志
+        chrome.storage.local.get(['testLogs'], (logResult) => {
+          if (logResult.testLogs && logResult.testLogs.length > 0) {
+            console.log('[Popup] 🔥 恢复保存的日志:', logResult.testLogs.length, '条');
+            logResult.testLogs.forEach(log => {
+              if (logContainer) {
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${log.type}`;
+                logEntry.style.padding = '8px';
+                logEntry.style.marginBottom = '4px';
+                logEntry.style.borderRadius = '4px';
+                logEntry.style.fontSize = '12px';
+                logEntry.style.wordBreak = 'break-all';
+
+                switch (log.type) {
+                  case 'success':
+                    logEntry.style.background = '#d4edda';
+                    logEntry.style.color = '#155724';
+                    break;
+                  case 'error':
+                    logEntry.style.background = '#f8d7da';
+                    logEntry.style.color = '#721c24';
+                    break;
+                  case 'warning':
+                    logEntry.style.background = '#fff3cd';
+                    logEntry.style.color = '#856404';
+                    break;
+                  default:
+                    logEntry.style.background = '#e2e3e5';
+                    logEntry.style.color = '#383d41';
+                }
+                logEntry.textContent = log.message;
+                logContainer.appendChild(logEntry);
+              }
+            });
+            console.log('[Popup] ✅ 日志已恢复');
+          }
+        });
+      }
+
       // 恢复测试状态
+      console.log('[Popup] 检查 testingState:', result.testingState);
       if (result.testingState && result.testingState.inProgress) {
         const testingState = result.testingState;
+        console.log('[Popup] 🔥🔥🔥 检测到进行中的测试！');
+        console.log('[Popup] testingState 详情:', testingState);
+
         const startTime = new Date(testingState.startTime).getTime();
         const now = new Date().getTime();
         const elapsed = (now - startTime) / 1000 / 60;
 
         if (elapsed > 5) {
+          console.log('[Popup] 测试已超过5分钟，清除状态');
           chrome.storage.local.set({ testingState: { inProgress: false } });
           return;
         }
 
+        // 恢复URL
+        if (testingState.url && urlInput) {
+          console.log('[Popup] 恢复URL:', testingState.url);
+          urlInput.value = testingState.url;
+        }
+
+        // 如果没有保存 tabId，先恢复UI，并尝试通过URL找回标签页
+        if (!testingState.tabId) {
+          console.warn('[Popup] ⚠️ testingState.tabId 为空，先恢复UI并尝试通过URL找回标签页');
+
+          // 构建并显示状态区域 DOM
+          statusSection.innerHTML = `
+            <h3>测试状态</h3>
+            <div class="status-bar">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="status-info">
+              <p>已测试项目: <span id="testedCount">0</span></p>
+              <p>成功: <span id="successCount">0</span></p>
+              <p>失败: <span id="failureCount">0</span></p>
+              <p>验证失败: <span id="apiErrorCount">0</span></p>
+            </div>
+            <div class="log-area">
+              <div id="logContainer" class="log-container"></div>
+            </div>
+          `;
+          statusSection.style.display = 'block';
+
+          // 重新获取 DOM 引用并恢复统计数据
+          testedCount = document.getElementById('testedCount');
+          successCount = document.getElementById('successCount');
+          failureCount = document.getElementById('failureCount');
+          apiErrorCount = document.getElementById('apiErrorCount');
+          progressBar = document.getElementById('progressBar');
+          logContainer = document.getElementById('logContainer');
+
+          chrome.storage.local.get(['testStats'], (statsResult) => {
+            if (statsResult.testStats) {
+              const stats = statsResult.testStats;
+              console.log('[Popup] 恢复统计数据(无tabId场景):', stats);
+              if (testedCount) testedCount.textContent = stats.testedCount || 0;
+              if (successCount) successCount.textContent = stats.successCount || 0;
+              if (failureCount) failureCount.textContent = stats.failureCount || 0;
+              if (apiErrorCount) apiErrorCount.textContent = stats.apiErrorCount || 0;
+              if (progressBar && stats.progress) {
+                progressBar.style.width = stats.progress + '%';
+              }
+            }
+          });
+
+          // 提示正在恢复并加载历史日志
+          addLog('⏳ 测试进行中（尝试恢复标签页）', 'warning');
+          chrome.storage.local.get(['testLogs'], (logResult) => {
+            if (logResult.testLogs && logResult.testLogs.length > 0) {
+              logResult.testLogs.forEach(log => {
+                if (logContainer) {
+                  const el = document.createElement('div');
+                  el.className = `log-entry log-${log.type}`;
+                  el.textContent = log.message;
+                  logContainer.appendChild(el);
+                }
+              });
+            }
+          });
+
+          // 尝试通过URL找到对应标签页
+          try {
+            chrome.tabs.query({}, (tabs) => {
+              const match = tabs.find(t => t.url && (t.url === testingState.url || t.url.startsWith(testingState.url)));
+              if (match) {
+                console.log('[Popup] ✅ 通过URL找到标签页:', match.id);
+                currentTab = { id: match.id };
+                chrome.storage.local.set({
+                  testingState: {
+                    inProgress: true,
+                    mode: testingState.mode,
+                    url: testingState.url,
+                    config: testingState.config,
+                    startTime: testingState.startTime,
+                    tabId: match.id
+                  }
+                });
+
+                // 召回悬浮球
+                chrome.tabs.sendMessage(match.id, { action: 'showFloatingBall' }).catch(() => {});
+              } else {
+                console.warn('[Popup] 未找到与URL匹配的标签页');
+              }
+            });
+          } catch (e) {
+            console.warn('[Popup] 查找标签页失败:', e);
+          }
+
+          // 已处理该路径，避免继续执行 tabs.get(null)
+          return;
+        }
+
+        console.log('[Popup] 准备调用 chrome.tabs.get，tabId:', testingState.tabId);
         chrome.tabs.get(testingState.tabId, (tab) => {
+          console.log('[Popup] 🔥 chrome.tabs.get 回调执行');
+          console.log('[Popup] tab:', tab);
+          if (chrome.runtime.lastError) {
+            console.error('[Popup] ❌ tabs.get 错误:', chrome.runtime.lastError);
+          }
+
           if (chrome.runtime.lastError || !tab) {
+            console.log('[Popup] 测试标签页已关闭，清除状态');
             chrome.storage.local.set({ testingState: { inProgress: false } });
           } else {
+            console.log('[Popup] 标签页存在，发送ping消息到tab:', tab.id);
             chrome.tabs.sendMessage(tab.id, { action: 'ping' }).then((response) => {
+              console.log('[Popup] ping 响应:', response);
               if (response && response.testing) {
+                console.log('[Popup] ✅ 测试仍在进行中，恢复所有UI状态');
+                // 完整恢复测试状态
                 testingInProgress = true;
                 currentTab = { id: testingState.tabId };
                 startTestBtn.disabled = true;
+                startIntelligentTestBtn.disabled = true;
                 stopTestBtn.disabled = false;
+
+                // 恢复报告按钮状态
+                viewReportBtn.disabled = false;
+                const reportIcon = document.getElementById('reportBtnIcon');
+                const reportLabel = document.getElementById('reportBtnLabel');
+                if (reportIcon) reportIcon.textContent = '⏳';
+                if (reportLabel) reportLabel.textContent = '测试进行中...';
+
+                // 恢复智能测试按钮状态
+                const icon = document.getElementById('intelligentTestIcon');
+                const label = document.getElementById('intelligentTestLabel');
+                if (icon) icon.textContent = '⏳';
+                if (label) label.textContent = '测试进行中...';
+
+                // 恢复测试用例报告按钮
+                if (downloadTestCaseReportBtn) {
+                  downloadTestCaseReportBtn.disabled = false;
+                  downloadTestCaseReportBtn.innerHTML = '<span class="icon">⏳</span> 生成中...';
+                }
+
+                // 🔥 先创建 statusSection 的 DOM 结构
+                statusSection.innerHTML = `
+                  <h3>测试状态</h3>
+                  <div class="status-bar">
+                    <div class="progress-bar" id="progressBar"></div>
+                  </div>
+                  <div class="status-info">
+                    <p>已测试项目: <span id="testedCount">0</span></p>
+                    <p>成功: <span id="successCount">0</span></p>
+                    <p>失败: <span id="failureCount">0</span></p>
+                    <p>验证失败: <span id="apiErrorCount">0</span></p>
+                  </div>
+                  <div class="log-area">
+                    <div id="logContainer" class="log-container"></div>
+                  </div>
+                `;
                 statusSection.style.display = 'block';
+
+                // 重新获取 DOM 元素引用
+                testedCount = document.getElementById('testedCount');
+                successCount = document.getElementById('successCount');
+                failureCount = document.getElementById('failureCount');
+                apiErrorCount = document.getElementById('apiErrorCount');
+                progressBar = document.getElementById('progressBar');
+                logContainer = document.getElementById('logContainer');
+
+                // 🔥 现在恢复统计数据
+                chrome.storage.local.get(['testStats'], (statsResult) => {
+                  if (statsResult.testStats) {
+                    const stats = statsResult.testStats;
+                    console.log('[Popup] 恢复统计数据:', stats);
+                    if (testedCount) testedCount.textContent = stats.testedCount || 0;
+                    if (successCount) successCount.textContent = stats.successCount || 0;
+                    if (failureCount) failureCount.textContent = stats.failureCount || 0;
+                    if (apiErrorCount) apiErrorCount.textContent = stats.apiErrorCount || 0;
+                    if (progressBar && stats.progress) {
+                      progressBar.style.width = stats.progress + '%';
+                    }
+                  }
+                });
+
                 addLog('✓ 恢复之前的测试状态', 'success');
+                const elapsedSec = Math.floor((now - startTime) / 1000);
+                addLog(`📊 测试已运行 ${elapsedSec} 秒`, 'info');
               }
             }).catch((error) => {
+              console.warn('[Popup] ⚠️ ping 失败（测试可能仍在后台运行）:', error);
+              // 即使ping失败，也恢复UI状态（测试可能仍在后台运行）
+              console.log('[Popup] 即使ping失败也恢复UI状态');
               testingInProgress = true;
               currentTab = { id: testingState.tabId };
               startTestBtn.disabled = true;
+              startIntelligentTestBtn.disabled = true;
               stopTestBtn.disabled = false;
+
+              viewReportBtn.disabled = false;
+              const reportIcon = document.getElementById('reportBtnIcon');
+              const reportLabel = document.getElementById('reportBtnLabel');
+              if (reportIcon) reportIcon.textContent = '⏳';
+              if (reportLabel) reportLabel.textContent = '测试进行中...';
+
+              if (downloadTestCaseReportBtn) {
+                downloadTestCaseReportBtn.disabled = false;
+                downloadTestCaseReportBtn.innerHTML = '<span class="icon">⏳</span> 生成中...';
+              }
+
+              // 🔥 先创建 statusSection 的 DOM 结构
+              statusSection.innerHTML = `
+                <h3>测试状态</h3>
+                <div class="status-bar">
+                  <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="status-info">
+                  <p>已测试项目: <span id="testedCount">0</span></p>
+                  <p>成功: <span id="successCount">0</span></p>
+                  <p>失败: <span id="failureCount">0</span></p>
+                  <p>验证失败: <span id="apiErrorCount">0</span></p>
+                </div>
+                <div class="log-area">
+                  <div id="logContainer" class="log-container"></div>
+                </div>
+              `;
               statusSection.style.display = 'block';
+
+              // 重新获取 DOM 元素引用
+              testedCount = document.getElementById('testedCount');
+              successCount = document.getElementById('successCount');
+              failureCount = document.getElementById('failureCount');
+              apiErrorCount = document.getElementById('apiErrorCount');
+              progressBar = document.getElementById('progressBar');
+              logContainer = document.getElementById('logContainer');
+
+              // 🔥 恢复统计数据
+              chrome.storage.local.get(['testStats'], (statsResult) => {
+                if (statsResult.testStats) {
+                  const stats = statsResult.testStats;
+                  console.log('[Popup] 恢复统计数据:', stats);
+                  if (testedCount) testedCount.textContent = stats.testedCount || 0;
+                  if (successCount) successCount.textContent = stats.successCount || 0;
+                  if (failureCount) failureCount.textContent = stats.failureCount || 0;
+                  if (apiErrorCount) apiErrorCount.textContent = stats.apiErrorCount || 0;
+                  if (progressBar && stats.progress) {
+                    progressBar.style.width = stats.progress + '%';
+                  }
+                }
+              });
+
               addLog('⏳ 测试进行中（加载中...）', 'warning');
+
+              // 🔥 恢复之前保存的日志
+              chrome.storage.local.get(['testLogs'], (logResult) => {
+                if (logResult.testLogs && logResult.testLogs.length > 0) {
+                  console.log('[Popup] 🔥 恢复保存的日志:', logResult.testLogs.length, '条');
+                  logResult.testLogs.forEach(log => {
+                    // 直接添加到 logContainer，而不调用 addLog（避免重复保存）
+                    if (logContainer) {
+                      const logEntry = document.createElement('div');
+                      logEntry.className = `log-entry log-${log.type}`;
+                      logEntry.style.padding = '8px';
+                      logEntry.style.marginBottom = '4px';
+                      logEntry.style.borderRadius = '4px';
+                      logEntry.style.fontSize = '12px';
+                      logEntry.style.wordBreak = 'break-all';
+
+                      switch (log.type) {
+                        case 'success':
+                          logEntry.style.background = '#d4edda';
+                          logEntry.style.color = '#155724';
+                          break;
+                        case 'error':
+                          logEntry.style.background = '#f8d7da';
+                          logEntry.style.color = '#721c24';
+                          break;
+                        case 'warning':
+                          logEntry.style.background = '#fff3cd';
+                          logEntry.style.color = '#856404';
+                          break;
+                        default:
+                          logEntry.style.background = '#e2e3e5';
+                          logEntry.style.color = '#383d41';
+                      }
+                      logEntry.textContent = log.message;
+                      logContainer.appendChild(logEntry);
+                    }
+                  });
+                }
+              });
             });
           }
         });
@@ -521,9 +929,23 @@ startTestBtn.addEventListener('click', async () => {
 });
 
 // 智能测试入口
+console.log('[Popup] 准备绑定AI智能分析按钮事件...');
+console.log('[Popup] startIntelligentTestBtn元素:', startIntelligentTestBtn);
+
+if (!startIntelligentTestBtn) {
+  console.error('[Popup] ❌ startIntelligentTestBtn元素未找到！');
+} else {
+  console.log('[Popup] ✅ startIntelligentTestBtn元素已找到，绑定点击事件');
+}
+
 startIntelligentTestBtn.addEventListener('click', async () => {
+  console.log('[Popup] ========== AI智能分析按钮被点击 ==========');
+
   const url = urlInput.value.trim();
   let intent = (testIntentInput?.value || '').trim();
+
+  console.log('[Popup] URL:', url);
+  console.log('[Popup] Intent:', intent);
 
   if (!url) {
     alert('❌ 请输入目标网址');
@@ -532,6 +954,8 @@ startIntelligentTestBtn.addEventListener('click', async () => {
 
   // 如果没有意图，先进行页面分析
   if (!intent) {
+    console.log('[Popup] Intent为空，进入页面分析流程');
+
     // 🔍 先检查扩展上下文是否有效
     if (!chrome.runtime || !chrome.runtime.id) {
       alert('⚠️ 扩展上下文已失效，需要重新加载\n\n请按以下步骤操作：\n1. 打开 chrome://extensions/\n2. 找到"Web功能自动化测试工具"\n3. 点击"重新加载"按钮\n4. 关闭此页面并重新打开');
@@ -548,7 +972,10 @@ startIntelligentTestBtn.addEventListener('click', async () => {
     });
 
     try {
+      console.log('[Popup] 准备查询当前标签页...');
       chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+        console.log('[Popup] tabs.query回调执行，tabs:', tabs);
+
         try {
           const activeTab = tabs[0];
           let targetTab = activeTab;
@@ -564,10 +991,16 @@ startIntelligentTestBtn.addEventListener('click', async () => {
 
           // 发送分析页面命令
           updateGlobalLoading({ percent: 50, text: '正在提取页面结构...' });
+          console.log('[Popup] 准备发送analyzePageForIntent消息到tab:', targetTab.id);
+
           chrome.tabs.sendMessage(targetTab.id, {
             action: 'analyzePageForIntent',
             url: url
           }, (resp) => {
+            console.log('[Popup] analyzePageForIntent回调执行');
+            console.log('[Popup] Response:', resp);
+            console.log('[Popup] lastError:', chrome.runtime.lastError);
+
             // 检查runtime错误
             if (chrome.runtime.lastError) {
               const errorMsg = chrome.runtime.lastError.message || '';
@@ -580,6 +1013,7 @@ startIntelligentTestBtn.addEventListener('click', async () => {
               }
               return;
             }
+
             if (resp && resp.success && resp.pageAnalysis) {
               // 优先使用内容脚本生成的高质量摘要
               let suggestion = (resp.intentSuggestion || '').trim();
@@ -640,7 +1074,7 @@ startIntelligentTestBtn.addEventListener('click', async () => {
     } catch (error) {
       hideGlobalLoading();
       addLog('⚠️ 自动分析失败，请手动填写测试意图', 'warning');
-      console.error('[Popup] 自动分析异常:', error);
+      console.error('[Popup] 外层自动分析异常:', error);
       return;
     }
   }
@@ -722,7 +1156,10 @@ async function startIntelligentTestWithIntent (url, intent) {
           }
 
           if (resp && resp.success) {
+            console.log('[Popup] ✅ 收到AI计划响应:', resp);
             const plan = resp.plan || {};
+            console.log('[Popup] AI计划内容:', plan);
+
             // 更新进度
             updateGlobalLoading({ percent: 70, text: '正在保存计划配置...' });
 
@@ -733,11 +1170,16 @@ async function startIntelligentTestWithIntent (url, intent) {
             }
             addLog('✓ AI计划生成完成，即将按推荐配置启动测试', 'success');
 
-            // 更新下载测试用例报告按钮为"正在生成用例中"
+            // 🔥 更新下载测试用例报告按钮为"查看测试用例报告"（可点击）
             if (downloadTestCaseReportBtn) {
               downloadTestCaseReportBtn.disabled = false;
-              downloadTestCaseReportBtn.innerHTML = '<span class="icon">⏳</span> 正在生成用例中...';
+              downloadTestCaseReportBtn.innerHTML = '<span class="icon">📥</span> 查看测试用例报告';
+              downloadTestCaseReportBtn.style.background = '#4CAF50'; // 绿色表示已就绪
+              downloadTestCaseReportBtn.style.cursor = 'pointer';
+
+              // 保存AI测试用例计划
               chrome.storage.local.set({ aiTestCasePlan: plan });
+              console.log('[Popup] ✅ 测试用例报告按钮已更新为可查看状态');
             }
 
             // 保存AI计划以供报告页展示
@@ -769,8 +1211,30 @@ async function startIntelligentTestWithIntent (url, intent) {
               emoji: '⚙️'
             });
 
-            // 复用现有自动测试启动
-            startAutoTest();
+            console.log('[Popup] ========== 准备调用 startAutoTest() ==========');
+            console.log('[Popup] 配置:', config);
+            console.log('[Popup] URL:', url);
+
+            // 确保URL已填充到输入框（startAutoTest从这里读取）
+            urlInput.value = url;
+
+            // 保存测试状态（关闭popup后可恢复）
+            chrome.storage.local.set({
+              testingState: {
+                inProgress: true,
+                mode: 'intelligent',
+                url: url,
+                intent: intent,
+                config: config,
+                startTime: new Date().toISOString()
+              }
+            });
+
+            // 延迟200ms确保状态保存完成，然后启动测试
+            setTimeout(() => {
+              console.log('[Popup] 开始调用 startAutoTest()');
+              startAutoTest();
+            }, 200);
           } else {
             hideGlobalLoading();
             const errorMsg = resp?.error || '未知错误';
@@ -829,7 +1293,9 @@ function renderAIPlan (plan) {
  * 开始自动测试
  */
 async function startAutoTest () {
+  console.log('[Popup] ========== startAutoTest() 已调用 ==========');
   const url = urlInput.value.trim();
+  console.log('[Popup] 测试URL:', url);
 
   if (!url) {
     alert('❌ 请输入目标网址');
@@ -862,7 +1328,46 @@ async function startAutoTest () {
   const reportLabel = document.getElementById('reportBtnLabel');
   if (reportIcon) reportIcon.textContent = '⏳';
   if (reportLabel) reportLabel.textContent = '正在生成报告中...';
-  downloadTestCaseReportBtn.disabled = true;
+
+  // 🔥 不禁用测试用例报告按钮！它已经有AI计划可查看
+  // downloadTestCaseReportBtn.disabled = true; // 删除这一行
+  console.log('[Popup] ⚠️ 测试用例报告按钮保持可用状态');
+
+  // 🔥 立即保存测试状态（关键！确保关闭popup后状态保持）
+  // ⚠️ 修复：只在真正开始新测试时清空数据，如果是恢复测试则保留
+  chrome.storage.local.get(['testingState'], (stateResult) => {
+    const isResuming = stateResult.testingState && stateResult.testingState.inProgress;
+
+    chrome.storage.local.set({
+      testingState: {
+        inProgress: true,
+        mode: 'auto',
+        url: url,
+        config: config,
+        startTime: isResuming ? stateResult.testingState.startTime : new Date().toISOString(),
+        tabId: null // 稍后更新
+      }
+    });
+
+    // 🔥 只在开始新测试时清空统计数据和日志
+    if (!isResuming) {
+      console.log('[Popup] 🆕 开始新测试，清空之前的数据');
+      chrome.storage.local.set({
+        testStats: {
+          testedCount: 0,
+          successCount: 0,
+          failureCount: 0,
+          apiErrorCount: 0,
+          progress: 0
+        },
+        testLogs: []
+      });
+    } else {
+      console.log('[Popup] 🔄 恢复测试状态，保留现有数据');
+    }
+
+    console.log('[Popup] ✅ 测试状态已保存到storage');
+  });
   statusSection.style.display = 'block';
   statusSection.innerHTML = `
     <h3>测试状态</h3>
@@ -887,6 +1392,22 @@ async function startAutoTest () {
   apiErrorCount = document.getElementById('apiErrorCount');
   progressBar = document.getElementById('progressBar');
   logContainer = document.getElementById('logContainer');
+
+  // 🔥 在创建 DOM 元素后，尝试恢复之前保存的统计数据（如果存在）
+  chrome.storage.local.get(['testStats'], (result) => {
+    if (result.testStats) {
+      console.log('[Popup] 🔥 检测到之前保存的统计数据，正在恢复...');
+      const stats = result.testStats;
+      if (testedCount) testedCount.textContent = stats.testedCount || 0;
+      if (successCount) successCount.textContent = stats.successCount || 0;
+      if (failureCount) failureCount.textContent = stats.failureCount || 0;
+      if (apiErrorCount) apiErrorCount.textContent = stats.apiErrorCount || 0;
+      if (progressBar && stats.progress) {
+        progressBar.style.width = stats.progress + '%';
+      }
+      console.log('[Popup] ✅ 统计数据已恢复:', stats);
+    }
+  });
 
   addLog('🚀 正在启动自动测试...', 'info');
 
@@ -955,37 +1476,94 @@ async function startAutoTest () {
     await waitForPageReady(currentTab.id, targetUrl, needWait ? 15000 : 5000);
     await ensureContentScriptReady(currentTab.id);
 
+    // 🔥 立即显示悬浮球（在测试开始前）
+    console.log('[Popup] ========== 🔥 立即显示悬浮球 ==========');
+    console.log('[Popup] currentTab.id:', currentTab.id);
+    console.log('[Popup] currentTab.url:', currentTab.url);
+
+    try {
+      const ballResult = await chrome.tabs.sendMessage(currentTab.id, {
+        action: 'showFloatingBall'
+      });
+      console.log('[Popup] ✅ 悬浮球显示命令发送成功，响应:', ballResult);
+    } catch (err) {
+      console.error('[Popup] ❌ 悬浮球显示失败:', err);
+      console.error('[Popup] 错误详情:', err.message);
+      if (chrome.runtime.lastError) {
+        console.error('[Popup] runtime.lastError:', chrome.runtime.lastError);
+      }
+      addLog('⚠️ 悬浮球显示失败，但测试继续...', 'warning');
+    }
+
+    // 更新测试状态，保存tabId
+    chrome.storage.local.set({
+      testingState: {
+        inProgress: true,
+        mode: 'auto',
+        url: url,
+        config: config,
+        startTime: new Date().toISOString(),
+        tabId: currentTab.id
+      }
+    });
+    console.log('[Popup] ✅ 测试状态已更新（含tabId）');
+
     // 开始测试
     setTimeout(() => {
       addLog('🔍 步骤 1/3: 分析页面结构...', 'info');
+      console.log('[Popup] ========== 发送analyzePageStructure消息 ==========');
+      console.log('[Popup] TabID:', currentTab.id);
+      console.log('[Popup] Config:', config);
+      console.log('[Popup] 准备调用 chrome.tabs.sendMessage...');
+
       chrome.tabs.sendMessage(currentTab.id, {
         action: 'analyzePageStructure',
         config: config
       }).then((analysisResponse) => {
+        console.log('[Popup] ========== 🔥 收到analyzePageStructure响应 ==========');
+        console.log('[Popup] Response:', analysisResponse);
+        console.log('[Popup] Response.success:', analysisResponse?.success);
+        console.log('[Popup] Response.elementCount:', analysisResponse?.elementCount);
+
         if (analysisResponse && analysisResponse.success) {
           addLog('✓ 页面分析完成，检测到 ' + analysisResponse.elementCount + ' 个可交互元素', 'success');
 
           addLog('📋 步骤 2/3: 生成智能测试计划...', 'info');
+          console.log('[Popup] ========== 发送generateTestPlan消息 ==========');
+
           chrome.tabs.sendMessage(currentTab.id, {
             action: 'generateTestPlan',
             analysis: analysisResponse.analysis,
             config: config
           }).then((planResponse) => {
+            console.log('[Popup] ========== 收到generateTestPlan响应 ==========');
+            console.log('[Popup] Response:', planResponse);
+
             if (planResponse && planResponse.success) {
               addLog('✓ 测试计划已生成，共 ' + planResponse.stepCount + ' 个测试步骤', 'success');
 
               addLog('▶️ 步骤 3/3: 执行自动化测试...', 'info');
+              console.log('[Popup] ========== 发送startTest消息 ==========');
+
               chrome.tabs.sendMessage(currentTab.id, {
                 action: 'startTest',
                 config: config,
                 plan: planResponse.plan
               }).then((response) => {
+                console.log('[Popup] ========== 收到startTest响应 ==========');
+                console.log('[Popup] Response:', response);
+
                 if (response && response.success) {
                   addLog('✓ 测试命令已发送', 'success');
 
+                  console.log('[Popup] ========== 发送showFloatingBall消息 ==========');
                   chrome.tabs.sendMessage(currentTab.id, {
                     action: 'showFloatingBall'
-                  }).catch(() => { });
+                  }).then(() => {
+                    console.log('[Popup] ✅ 悬浮球已显示');
+                  }).catch((err) => {
+                    console.error('[Popup] ❌ 悬浮球显示失败:', err);
+                  });
 
                   chrome.storage.local.set({
                     testingState: {
@@ -998,6 +1576,8 @@ async function startAutoTest () {
                   isFloatingBallMode = true;
                 }
               }).catch((error) => {
+                console.error('[Popup] ❌ startTest失败:', error);
+                console.error('[Popup] chrome.runtime.lastError:', chrome.runtime.lastError);
                 addLog('❌ 测试启动失败: ' + error.message, 'error');
                 testingInProgress = false;
                 startTestBtn.disabled = false;
@@ -1005,6 +1585,8 @@ async function startAutoTest () {
               });
             }
           }).catch((error) => {
+            console.error('[Popup] ❌ generateTestPlan失败:', error);
+            console.error('[Popup] chrome.runtime.lastError:', chrome.runtime.lastError);
             addLog('❌ 测试计划生成失败: ' + error.message, 'error');
             testingInProgress = false;
             startTestBtn.disabled = false;
@@ -1012,6 +1594,8 @@ async function startAutoTest () {
           });
         }
       }).catch((error) => {
+        console.error('[Popup] ❌ analyzePageStructure失败:', error);
+        console.error('[Popup] chrome.runtime.lastError:', chrome.runtime.lastError);
         addLog('❌ 页面分析失败: ' + error.message, 'error');
         testingInProgress = false;
         startTestBtn.disabled = false;
@@ -1220,7 +1804,8 @@ stopTestBtn.addEventListener('click', () => {
   startTestBtn.disabled = false;
   startIntelligentTestBtn.disabled = false;
   stopTestBtn.disabled = true;
-  downloadTestCaseReportBtn.disabled = true;
+  // 🔥 不禁用下载按钮！停止测试后用户应该能查看已生成的报告
+  // downloadTestCaseReportBtn.disabled = true;
   addLog('⏹️ 测试已停止', 'warning');
 
   chrome.storage.local.set({ testingState: { inProgress: false } });
@@ -1270,28 +1855,321 @@ if (saveTestSettingsBtn) {
   });
 }
 
-// 下载测试用例报告
+// 查看/下载测试用例报告
 if (downloadTestCaseReportBtn) {
   downloadTestCaseReportBtn.addEventListener('click', () => {
     chrome.storage.local.get(['aiTestCasePlan', 'aiPlan'], (result) => {
       const plan = result.aiTestCasePlan || result.aiPlan || {};
       if (!plan || Object.keys(plan).length === 0) {
-        alert('❌ 没有可下载的测试用例报告');
+        alert('❌ 没有可用的测试用例报告\n\n请先点击"AI智能分析"生成测试计划');
         return;
       }
+
+      // 🔥 在新标签页中打开格式化的报告页面
+      const reportHtml = generateTestCaseReportHTML(plan);
+      const blob = new Blob([reportHtml], { type: 'text/html; charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      chrome.tabs.create({ url: url }, (tab) => {
+        // 延迟释放URL，确保页面加载完成
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      });
+
+      addLog('✅ 测试用例报告已在新标签页打开', 'success');
+    });
+  });
+}
+
+// 生成测试用例报告HTML
+function generateTestCaseReportHTML (plan) {
+  const intentAnalysis = plan.intentAnalysis || {};
+  const testStrategy = plan.testStrategy || {};
+  const aiInsights = plan.aiInsights || {};
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI测试用例报告 - ${new Date().toLocaleString()}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .header .subtitle {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+    .content {
+      padding: 40px;
+    }
+    .section {
+      margin-bottom: 40px;
+      padding: 30px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border-left: 5px solid #667eea;
+    }
+    .section h2 {
+      color: #667eea;
+      font-size: 1.8em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section h3 {
+      color: #495057;
+      font-size: 1.3em;
+      margin: 20px 0 10px 0;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .info-item {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .info-item .label {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 5px;
+    }
+    .info-item .value {
+      color: #495057;
+    }
+    .test-area {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-area h4 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+    .step-list {
+      list-style: none;
+      padding-left: 0;
+    }
+    .step-list li {
+      padding: 10px;
+      margin: 8px 0;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 3px solid #667eea;
+    }
+    .recommendation {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 6px;
+    }
+    .risk {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 6px;
+    }
+    .download-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #667eea;
+      color: white;
+      padding: 15px 30px;
+      border-radius: 50px;
+      border: none;
+      font-size: 1.1em;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      transition: all 0.3s;
+    }
+    .download-btn:hover {
+      background: #764ba2;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
+    }
+    .tag {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      margin: 5px 5px 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 AI智能测试用例报告</h1>
+      <div class="subtitle">生成时间: ${new Date().toLocaleString()}</div>
+    </div>
+
+    <div class="content">
+      <!-- 意图分析 -->
+      <div class="section">
+        <h2>🎯 测试意图分析</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="label">用户目标</div>
+            <div class="value">${intentAnalysis.userGoal || '未指定'}</div>
+          </div>
+          <div class="info-item">
+            <div class="label">测试范围</div>
+            <div class="value">${intentAnalysis.testScope || '未指定'}</div>
+          </div>
+          <div class="info-item">
+            <div class="label">描述</div>
+            <div class="value">${intentAnalysis.description || '无'}</div>
+          </div>
+        </div>
+        ${intentAnalysis.focusAreas && intentAnalysis.focusAreas.length ? `
+        <h3>重点关注领域</h3>
+        <div>
+          ${intentAnalysis.focusAreas.map(area => `<span class="tag">${area}</span>`).join('')}
+        </div>
+        ` : ''}
+      </div>
+
+      <!-- 测试策略 -->
+      <div class="section">
+        <h2>📋 测试策略</h2>
+        ${testStrategy.testAreas && testStrategy.testAreas.length ? testStrategy.testAreas.map(area => `
+        <div class="test-area">
+          <h4>📌 ${area.area}</h4>
+          <p><strong>描述：</strong>${area.description || '无'}</p>
+          ${area.steps && area.steps.length ? `
+          <p><strong>测试步骤：</strong></p>
+          <ul class="step-list">
+            ${area.steps.map(step => `<li>${step}</li>`).join('')}
+          </ul>
+          ` : ''}
+        </div>
+        `).join('') : '<p>无测试区域数据</p>'}
+      </div>
+
+      <!-- AI洞察 -->
+      <div class="section">
+        <h2>💡 AI洞察建议</h2>
+        ${aiInsights.potentialRisks && aiInsights.potentialRisks.length ? `
+        <h3>⚠️ 潜在风险</h3>
+        ${aiInsights.potentialRisks.map(risk => `
+        <div class="risk">
+          <strong>风险：</strong>${risk}
+        </div>
+        `).join('')}
+        ` : ''}
+
+        ${aiInsights.recommendations && aiInsights.recommendations.length ? `
+        <h3>💡 优化建议</h3>
+        ${aiInsights.recommendations.map(rec => `
+        <div class="recommendation">
+          ${rec}
+        </div>
+        `).join('')}
+        ` : ''}
+
+        ${aiInsights.tips && aiInsights.tips.length ? `
+        <h3>📝 测试技巧</h3>
+        <ul class="step-list">
+          ${aiInsights.tips.map(tip => `<li>${tip}</li>`).join('')}
+        </ul>
+        ` : ''}
+      </div>
+
+      <!-- 推荐配置 -->
+      ${plan.recommendedConfig ? `
+      <div class="section">
+        <h2>⚙️ 推荐测试配置</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="label">延迟时间</div>
+            <div class="value">${plan.recommendedConfig.delay || 1200} ms</div>
+          </div>
+          <div class="info-item">
+            <div class="label">最大元素数</div>
+            <div class="value">${plan.recommendedConfig.maxElements || 100}</div>
+          </div>
+          <div class="info-item">
+            <div class="label">超时时间</div>
+            <div class="value">${plan.recommendedConfig.timeout || 30} 秒</div>
+          </div>
+          <div class="info-item">
+            <div class="label">测试表单</div>
+            <div class="value">${plan.recommendedConfig.testForms !== false ? '✅ 是' : '❌ 否'}</div>
+          </div>
+          <div class="info-item">
+            <div class="label">测试链接</div>
+            <div class="value">${plan.recommendedConfig.testLinks !== false ? '✅ 是' : '❌ 否'}</div>
+          </div>
+          <div class="info-item">
+            <div class="label">测试按钮</div>
+            <div class="value">${plan.recommendedConfig.testButtons !== false ? '✅ 是' : '❌ 否'}</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+    </div>
+  </div>
+
+  <button class="download-btn" onclick="downloadJSON()">
+    📥 下载JSON报告
+  </button>
+
+  <script>
+    function downloadJSON() {
+      const plan = ${JSON.stringify(plan)};
       const dataStr = JSON.stringify(plan, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `ai-test-case-plan-${Date.now()}.json`;
+      link.download = 'ai-test-case-plan-' + Date.now() + '.json';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      addLog('✅ 测试用例报告已下载', 'success');
-    });
-  });
+    }
+  </script>
+</body>
+</html>`;
 }
 
 // =============================================
@@ -1408,6 +2286,17 @@ function addLog (message, type = 'info') {
 
   // 自动滚动到底部
   logContainer.parentElement.scrollTop = logContainer.parentElement.scrollHeight;
+
+  // 🔥 保存日志到 storage，确保关闭 popup 后仍能看到日志
+  chrome.storage.local.get(['testLogs'], (result) => {
+    let logs = result.testLogs || [];
+    // 限制日志数量，最多保留 100 条
+    if (logs.length >= 100) {
+      logs.shift();
+    }
+    logs.push({ message, type, timestamp: new Date().toLocaleTimeString() });
+    chrome.storage.local.set({ testLogs: logs });
+  });
 }
 
 // =============================================
@@ -1422,6 +2311,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       successCount.textContent = request.successCount || 0;
       failureCount.textContent = request.failureCount || 0;
       apiErrorCount.textContent = request.apiErrorCount || 0;
+
+      // 🔥 保存测试统计数据到 storage，确保关闭 popup 后仍能恢复
+      chrome.storage.local.set({
+        testStats: {
+          testedCount: request.testedCount || 0,
+          successCount: request.successCount || 0,
+          failureCount: request.failureCount || 0,
+          apiErrorCount: request.apiErrorCount || 0,
+          progress: request.progress || 0
+        }
+      });
 
       if (request.progress) {
         progressBar.style.width = request.progress + '%';
@@ -1445,6 +2345,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const total = d.totalButtons || 0;
       const pct = total > 0 ? Math.round((d.testedCount || 0) / total * 100) : 0;
       progressBar.style.width = pct + '%';
+
+      // 🔥 保存测试统计数据到 storage，确保关闭 popup 后仍能恢复
+      chrome.storage.local.set({
+        testStats: {
+          testedCount: d.testedCount || 0,
+          successCount: d.successCount || 0,
+          failureCount: d.failureCount || 0,
+          apiErrorCount: d.apiErrorCount || 0,
+          progress: pct || 0
+        }
+      });
 
       // 同步更新全局加载提示进度（若显示中）
       if (globalLoadingOverlay && globalLoadingOverlay.style.display !== 'none') {
@@ -1475,7 +2386,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // 更新下载测试用例报告按钮为完成状态
     if (downloadTestCaseReportBtn) {
+      downloadTestCaseReportBtn.disabled = false;
       downloadTestCaseReportBtn.innerHTML = '<span class="icon">📥</span> 下载测试用例报告';
+      console.log('[Popup] ✅ 测试用例报告按钮已更新为可下载状态');
     }
     // 恢复"查看报告"按钮状态
     const reportIcon = document.getElementById('reportBtnIcon');
@@ -1488,8 +2401,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       startTestBtn.innerHTML = '<span class="icon">🔄</span> 再次测试';
     } catch { }
 
-    addLog('✅ 测试已完成', 'success');
+    addLog('✅ 测试已完成，可查看报告', 'success');
 
-    chrome.storage.local.set({ testingState: { inProgress: false } });
+    // 清除测试状态，标记为已完成
+    chrome.storage.local.set({
+      testingState: {
+        inProgress: false,
+        completed: true,
+        completedAt: new Date().toISOString()
+      }
+    });
   }
 });

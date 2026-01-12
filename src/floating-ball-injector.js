@@ -128,14 +128,16 @@
 
   (document.head || document.documentElement).appendChild(executorScript);
 
-  // 2. 注入 FloatingBall（稍微延迟确保依赖加载完成）
+  // 2. 注入 FloatingBall（延迟确保依赖加载完成，并等待 DOM 就绪）
   setTimeout(() => {
+    console.log('[FloatingBallInjector] 🚀 准备注入 FloatingBall 脚本...');
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('src/floating-ball.js');
     script.type = 'text/javascript';
 
     script.onload = function () {
       console.log('[FloatingBallInjector] ✅ FloatingBall代码已注入到页面主上下文');
+      console.log('[FloatingBallInjector] 📢 等待 floatingBallReady 事件...');
       this.remove();
     };
 
@@ -144,36 +146,66 @@
     };
 
     (document.head || document.documentElement).appendChild(script);
-  }, 50);
+  }, 100);
 
   // ============================================
-  // 第3步：设置消息桥接
+  // 第3步：设置消息桥接 - 带消息队列机制
   // ============================================
+
+  // 🔧 消息队列：如果浮球脚本还未加载，将消息先缓存
+  let messageQueue = [];
+  let isFloatingBallReady = false;
+
+  // 当浮球脚本加载完成时，标记为就绪并发送缓存的消息
+  window.addEventListener('floatingBallReady', () => {
+    console.log('[FloatingBallInjector] 🎯 FloatingBall脚本已就绪');
+    isFloatingBallReady = true;
+
+    // 发送所有缓存的消息
+    while (messageQueue.length > 0) {
+      const msg = messageQueue.shift();
+      console.log('[FloatingBallInjector] 📨 从队列发送缓存消息:', msg.action);
+      window.dispatchEvent(new CustomEvent('floatingBallMessage', { detail: msg }));
+    }
+  });
 
   // 🔗 设置消息桥接：从Content Script转发chrome.runtime消息到页面主上下文
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('[FloatingBallInjector] ========== 🔥 收到消息 ==========');
+    console.log('[FloatingBallInjector] Action:', request.action);
+    console.log('[FloatingBallInjector] FloatingBall就绪:', isFloatingBallReady);
+
     // 将chrome.runtime消息转发为window事件
     if (request.action && request.action.includes('Floating')) {
-      window.dispatchEvent(new CustomEvent('floatingBallMessage', {
-        detail: request
-      }));
-      console.log('[FloatingBallInjector] 📨 转发消息到页面主上下文:', request.action);
+      if (isFloatingBallReady) {
+        console.log('[FloatingBallInjector] 📨 直接转发消息到页面主上下文:', request.action);
+        window.dispatchEvent(new CustomEvent('floatingBallMessage', { detail: request }));
+      } else {
+        console.log('[FloatingBallInjector] ⏳ FloatingBall未就绪，消息入队:', request.action);
+        messageQueue.push(request);
+      }
     }
 
     // 特殊处理：显示/隐藏悬浮球
     if (request.action === 'showFloatingBall' || request.action === 'hideFloatingBall') {
-      window.dispatchEvent(new CustomEvent('floatingBallMessage', {
-        detail: request
-      }));
-      console.log('[FloatingBallInjector] 📨 转发消息:', request.action);
+      if (isFloatingBallReady) {
+        console.log('[FloatingBallInjector] 📨 直接转发消息:', request.action);
+        window.dispatchEvent(new CustomEvent('floatingBallMessage', { detail: request }));
+      } else {
+        console.log('[FloatingBallInjector] ⏳ FloatingBall未就绪，消息入队:', request.action);
+        messageQueue.push(request);
+      }
     }
 
     // 补充：测试完成状态转发到页面主上下文（用于更新悬浮球UI）
     if (request.action === 'testComplete') {
-      window.dispatchEvent(new CustomEvent('floatingBallMessage', {
-        detail: request
-      }));
-      console.log('[FloatingBallInjector] 📨 转发消息: testComplete');
+      if (isFloatingBallReady) {
+        console.log('[FloatingBallInjector] 📨 转发消息: testComplete');
+        window.dispatchEvent(new CustomEvent('floatingBallMessage', { detail: request }));
+      } else {
+        console.log('[FloatingBallInjector] ⏳ testComplete消息入队');
+        messageQueue.push(request);
+      }
     }
 
     return true;

@@ -42,9 +42,10 @@ class QwenIntegration {
         body: JSON.stringify({
           model: this.model,
           messages: messages,
-          temperature: options.temperature || 0.7,
-          max_tokens: options.maxTokens || 2000,
-          top_p: options.topP || 0.9
+          temperature: options.temperature || 0.1,  // 🔥 降低随机性，加快响应
+          max_tokens: options.maxTokens || 1500,    // 🔥 减少token，加快响应
+          top_p: options.topP || 0.8,               // 🔥 降低采样范围
+          stream: false                              // 禁用流式输出
         })
       });
 
