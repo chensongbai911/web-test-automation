@@ -27,6 +27,7 @@
     {
       "matches": ["<all_urls>"],
       "js": [
+        "src/e2e-scenario-tracker.js",
         "src/test-case-parser.js",
         "src/custom-test-executor.js",
         "src/test-flow-manager.js",

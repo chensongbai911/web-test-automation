@@ -14,7 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'testReports',
     'aiPlan',
     'crossPageState',
-    'aiInsights'
+    'aiInsights',
+    'e2eScenario'
   ], (result) => {
     console.log('[报告页面] Storage数据:', result);
 
@@ -71,6 +72,20 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCoverageProgress(testData);
       }
     } catch (e) { console.log('[报告页面] 覆盖率渲染跳过:', e?.message || e); }
+
+    // 渲染UI框架组件结果（如果有）
+    try {
+      if (testData && testData.components && testData.components.length > 0) {
+        renderComponentsResult(testData.components);
+      }
+    } catch (e) { console.log('[报告页面] 组件结果渲染跳过:', e?.message || e); }
+
+    // 📊 渲染E2E场景流水报告（如果有）
+    try {
+      if (result.e2eScenario) {
+        renderE2EScenarioFlow(result.e2eScenario);
+      }
+    } catch (e) { console.log('[报告页面] E2E场景流水渲染跳过:', e?.message || e); }
   });
 });
 
@@ -764,6 +779,130 @@ function renderDecisionTimeline (decisions) {
   }
 }
 
+// UI框架组件测试结果渲染
+function renderComponentsResult (components) {
+  try {
+    if (!Array.isArray(components) || components.length === 0) return;
+    const container = document.querySelector('.content') || document.body;
+    const section = document.createElement('section');
+    section.className = 'section';
+
+    // 统计成功/失败
+    const success = components.filter(c => c.status === 'success').length;
+    const failed = components.filter(c => c.status === 'failed').length;
+    const skipped = components.filter(c => c.status === 'skipped').length;
+    const total = components.length;
+    const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : 0;
+
+    // 按框架分组
+    const byFramework = {};
+    components.forEach(c => {
+      const fw = c.framework || 'unknown';
+      if (!byFramework[fw]) byFramework[fw] = [];
+      byFramework[fw].push(c);
+    });
+
+    // 按组件类型分组
+    const byComponentType = {};
+    components.forEach(c => {
+      const ct = c.componentType || 'unknown';
+      if (!byComponentType[ct]) byComponentType[ct] = { total: 0, success: 0, failed: 0 };
+      byComponentType[ct].total++;
+      if (c.status === 'success') byComponentType[ct].success++;
+      else if (c.status === 'failed') byComponentType[ct].failed++;
+    });
+
+    let content = `<h2>🧩 UI框架组件测试结果</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
+        <div style="background: #f0f7ff; padding: 10px; border-radius: 6px; text-align: center;">
+          <div style="font-size: 20px; color: #1890ff;">📊</div>
+          <div style="font-size: 14px; color: #333; font-weight: bold;">${total}</div>
+          <div style="font-size: 12px; color: #666;">总数</div>
+        </div>
+        <div style="background: #f6ffed; padding: 10px; border-radius: 6px; text-align: center;">
+          <div style="font-size: 20px; color: #52c41a;">✅</div>
+          <div style="font-size: 14px; color: #333; font-weight: bold;">${success}</div>
+          <div style="font-size: 12px; color: #666;">成功</div>
+        </div>
+        <div style="background: #fff1f0; padding: 10px; border-radius: 6px; text-align: center;">
+          <div style="font-size: 20px; color: #ff4d4f;">❌</div>
+          <div style="font-size: 14px; color: #333; font-weight: bold;">${failed}</div>
+          <div style="font-size: 12px; color: #666;">失败</div>
+        </div>
+        <div style="background: #fafafa; padding: 10px; border-radius: 6px; text-align: center;">
+          <div style="font-size: 20px; color: #999;">⏭️</div>
+          <div style="font-size: 14px; color: #333; font-weight: bold;">${successRate}%</div>
+          <div style="font-size: 12px; color: #666;">成功率</div>
+        </div>
+      </div>`;
+
+    // 按框架显示
+    for (const [framework, items] of Object.entries(byFramework)) {
+      const frameworkLabel = {
+        'element-plus': 'Element Plus',
+        'ant-design-vue': 'Ant Design Vue',
+        'naive-ui': 'Naive UI'
+      }[framework] || framework;
+
+      content += `<div style="margin-bottom: 15px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px;">📦 ${frameworkLabel}</div>`;
+
+      items.forEach(c => {
+        const statusIcon = c.status === 'success' ? '✅' : c.status === 'failed' ? '❌' : '⏭️';
+        const componentLabel = {
+          'select': '下拉选择',
+          'datepicker': '日期选择',
+          'cascader': '级联选择',
+          'checkbox': '多选框',
+          'radio': '单选框',
+          'switch': '开关'
+        }[c.componentType] || c.componentType;
+
+        content += `<div style="font-size: 13px; color: #555; margin: 5px 0;">
+          ${statusIcon} <strong>${componentLabel}</strong>: ${escapeHtml(c.text)}
+          ${c.error ? `<span style="color: #d32f2f;"> (${escapeHtml(c.error)})</span>` : ''}
+        </div>`;
+      });
+
+      content += '</div>';
+    }
+
+    // 按组件类型显示成功率条形图
+    if (Object.keys(byComponentType).length > 0) {
+      content += '<div style="margin-top: 15px;"><strong style="color: #333;">按组件类型成功率</strong>';
+      content += '<div style="margin-top: 8px;">';
+
+      for (const [type, stats] of Object.entries(byComponentType)) {
+        const typeLabel = {
+          'select': '下拉选择',
+          'datepicker': '日期选择',
+          'cascader': '级联选择',
+          'checkbox': '多选框',
+          'radio': '单选框',
+          'switch': '开关'
+        }[type] || type;
+        const successPct = stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0;
+
+        content += `<div style="margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #555; margin-bottom: 4px;">
+            ${typeLabel} <span style="color: #999;">(${stats.success}/${stats.total})</span>
+          </div>
+          <div style="height: 20px; background: #f0f0f0; border-radius: 4px; overflow: hidden;">
+            <div style="height: 100%; width: ${successPct}%; background: linear-gradient(90deg, #52c41a, #95de64); border-radius: 4px;"></div>
+          </div>
+        </div>`;
+      }
+
+      content += '</div></div>';
+    }
+
+    section.innerHTML = content;
+    container.appendChild(section);
+  } catch (e) {
+    console.error('[报告页面] 渲染UI框架组件失败:', e);
+  }
+}
+
 // 渲染元素表
 function renderElementsTable (elements) {
   const tbody = document.getElementById('elementsTableBody');
@@ -906,4 +1045,207 @@ function escapeHtml (text) {
     "'": '&#039;'
   };
   return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// 📊 渲染E2E场景流水报告
+function renderE2EScenarioFlow (scenario) {
+  try {
+    if (!scenario || !scenario.steps || scenario.steps.length === 0) {
+      console.log('[报告页面] E2E场景数据为空，跳过渲染');
+      return;
+    }
+
+    const container = document.querySelector('.content') || document.body;
+    const section = document.createElement('section');
+    section.className = 'section';
+
+    const { steps, decisions, summary, performanceAnalysis, apiStats, criticalPath } = scenario;
+
+    // 统计总览
+    const successSteps = steps.filter(s => s.success).length;
+    const failureSteps = steps.filter(s => !s.success).length;
+    const totalSteps = steps.length;
+    const successRate = totalSteps > 0 ? ((successSteps / totalSteps) * 100).toFixed(1) : 0;
+    const totalDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
+
+    let content = `<h2>📊 E2E场景流水报告</h2>`;
+
+    // KPI卡片
+    content += `<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 15px;">
+      <div style="background: #f0f7ff; padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px;">📈</div>
+        <div style="font-size: 16px; color: #1890ff; font-weight: bold;">${totalSteps}</div>
+        <div style="font-size: 12px; color: #666;">总步骤数</div>
+      </div>
+      <div style="background: #f6ffed; padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px;">✅</div>
+        <div style="font-size: 16px; color: #52c41a; font-weight: bold;">${successSteps}</div>
+        <div style="font-size: 12px; color: #666;">成功</div>
+      </div>
+      <div style="background: #fff1f0; padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px;">❌</div>
+        <div style="font-size: 16px; color: #ff4d4f; font-weight: bold;">${failureSteps}</div>
+        <div style="font-size: 12px; color: #666;">失败</div>
+      </div>
+      <div style="background: #fafafa; padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px;">📊</div>
+        <div style="font-size: 16px; color: #faad14; font-weight: bold;">${successRate}%</div>
+        <div style="font-size: 12px; color: #666;">成功率</div>
+      </div>
+      <div style="background: #f0f0f0; padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px;">⏱️</div>
+        <div style="font-size: 16px; color: #555; font-weight: bold;">${(totalDuration / 1000).toFixed(1)}s</div>
+        <div style="font-size: 12px; color: #666;">总耗时</div>
+      </div>
+    </div>`;
+
+    // 操作序列表
+    content += `<h3 style="margin: 20px 0 10px 0; color: #333;">🔄 操作序列</h3>
+      <div style="overflow-x: auto; margin-bottom: 15px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead style="background: #f5f5f5;">
+            <tr>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">步骤</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">行为</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">目标</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">结果</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">耗时(ms)</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">框架</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    steps.forEach((step, idx) => {
+      const actionLabel = {
+        'button': '按钮',
+        'link': '链接',
+        'input': '输入',
+        'component-select': '下拉',
+        'component-interaction': '组件交互'
+      }[step.action] || step.action;
+
+      const componentLabel = step.componentType ? ` (${step.componentType})` : '';
+      const statusIcon = step.success ? '✅' : '❌';
+      const statusColor = step.success ? '#52c41a' : '#ff4d4f';
+      const frameworkLabel = step.framework ? step.framework.replace('-', ' ') : '-';
+
+      content += `<tr style="border-bottom: 1px solid #ddd;">
+        <td style="border: 1px solid #ddd; padding: 8px;">${idx + 1}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${actionLabel}${componentLabel}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(step.target)}">${escapeHtml((step.target || '').substring(0, 50))}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: ${statusColor}; font-weight: bold;">${statusIcon}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: #666;">${step.duration || 0}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: #999; font-size: 12px;">${frameworkLabel}</td>
+      </tr>`;
+
+      // 失败步骤显示错误信息
+      if (!step.success && step.error) {
+        content += `<tr style="border-bottom: 1px solid #ddd; background: #fff1f0;">
+          <td colspan="6" style="border: 1px solid #ddd; padding: 8px; color: #d32f2f; font-size: 12px;">
+            ⚠️ 错误: ${escapeHtml(step.error)}
+          </td>
+        </tr>`;
+      }
+    });
+
+    content += `</tbody>
+        </table>
+      </div>`;
+
+    // 性能分析
+    if (performanceAnalysis) {
+      const { avgDuration, maxDuration, minDuration } = performanceAnalysis;
+      content += `<h3 style="margin: 20px 0 10px 0; color: #333;">⏱️ 性能分析</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">
+          <div style="background: #e6f7ff; padding: 12px; border-radius: 6px;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">平均耗时</div>
+            <div style="font-size: 18px; color: #1890ff; font-weight: bold;">${(avgDuration / 1000).toFixed(2)}s</div>
+          </div>
+          <div style="background: #fff1f0; padding: 12px; border-radius: 6px;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最大耗时</div>
+            <div style="font-size: 18px; color: #ff4d4f; font-weight: bold;">${(maxDuration / 1000).toFixed(2)}s</div>
+          </div>
+          <div style="background: #f6ffed; padding: 12px; border-radius: 6px;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最小耗时</div>
+            <div style="font-size: 18px; color: #52c41a; font-weight: bold;">${(minDuration / 1000).toFixed(2)}s</div>
+          </div>
+        </div>`;
+    }
+
+    // API统计
+    if (apiStats && apiStats.callsByMethod && Object.keys(apiStats.callsByMethod).length > 0) {
+      content += `<h3 style="margin: 20px 0 10px 0; color: #333;">🌐 API调用统计</h3>
+        <div style="margin-bottom: 15px;">`;
+
+      for (const [method, count] of Object.entries(apiStats.callsByMethod)) {
+        const methodColor = {
+          'GET': '#1890ff',
+          'POST': '#52c41a',
+          'PUT': '#faad14',
+          'DELETE': '#ff4d4f'
+        }[method] || '#666';
+
+        content += `<div style="margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #555; margin-bottom: 3px;">
+            <span style="color: ${methodColor}; font-weight: bold;">${method}</span> 
+            <span style="color: #999;">(${count})</span>
+          </div>
+          <div style="height: 16px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
+            <div style="height: 100%; width: ${Math.min(count * 20, 100)}%; background: ${methodColor}; border-radius: 3px;"></div>
+          </div>
+        </div>`;
+      }
+
+      content += '</div>';
+
+      // 失败请求
+      if (apiStats.failures && apiStats.failures.length > 0) {
+        content += `<div style="background: #fff1f0; padding: 10px; border-radius: 6px; margin-top: 10px;">
+          <div style="color: #ff4d4f; font-weight: bold; margin-bottom: 5px;">⚠️ 失败请求 (${apiStats.failures.length})</div>`;
+
+        apiStats.failures.slice(0, 5).forEach(failure => {
+          content += `<div style="font-size: 12px; color: #d32f2f; margin: 3px 0;">
+            ${failure.method} ${escapeHtml(failure.url)} - ${failure.status}
+          </div>`;
+        });
+
+        if (apiStats.failures.length > 5) {
+          content += `<div style="font-size: 12px; color: #999; margin-top: 5px;">... 还有 ${apiStats.failures.length - 5} 个</div>`;
+        }
+
+        content += '</div>';
+      }
+    }
+
+    // 关键路径（失败+关键操作）
+    if (criticalPath && criticalPath.length > 0) {
+      content += `<h3 style="margin: 20px 0 10px 0; color: #333;">🎯 关键路径（失败+关键操作）</h3>
+        <div style="background: #fafafa; padding: 12px; border-radius: 6px; border-left: 4px solid #ff4d4f;">`;
+
+      criticalPath.forEach((step, idx) => {
+        const isCritical = step.action === 'navigate' || step.action === 'submit' || step.action === 'login';
+        const icon = !step.success ? '❌' : '🎯';
+        content += `<div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #eee;">
+          <div style="font-weight: bold; color: #333;">
+            ${icon} ${step.action} 
+            ${isCritical ? '<span style="background: #faad14; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">关键</span>' : ''}
+            ${!step.success ? '<span style="background: #ff4d4f; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">失败</span>' : ''}
+          </div>
+          <div style="font-size: 12px; color: #666; margin-top: 3px;">
+            ${escapeHtml(step.target)} 
+            <span style="color: #999;">(${step.duration}ms)</span>
+          </div>
+          ${step.error ? `<div style="font-size: 12px; color: #d32f2f; margin-top: 3px;">错误: ${escapeHtml(step.error)}</div>` : ''}
+        </div>`;
+      });
+
+      content += '</div>';
+    }
+
+    section.innerHTML = content;
+    container.appendChild(section);
+    console.log('[报告页面] E2E场景流水已渲染');
+  } catch (e) {
+    console.error('[报告页面] 渲染E2E场景流水失败:', e);
+  }
 }

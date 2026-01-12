@@ -545,6 +545,7 @@ function getInteractiveElements () {
           element: wrapper,
           type: 'component-select',
           framework: 'element-plus',
+          componentType: 'select',
           text: text || 'Select',
           selector: getElementSelector(wrapper)
         });
@@ -561,6 +562,7 @@ function getInteractiveElements () {
           element: wrapper,
           type: 'component-select',
           framework: 'ant-design-vue',
+          componentType: 'select',
           text: text || 'Select',
           selector: getElementSelector(wrapper)
         });
@@ -577,8 +579,199 @@ function getInteractiveElements () {
           element: wrapper,
           type: 'component-select',
           framework: 'naive-ui',
+          componentType: 'select',
           text: text || 'Select',
           selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 📅 Element Plus DatePicker
+    const elDatePickers = document.querySelectorAll('.el-date-picker, .el-datetime-picker');
+    elDatePickers.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.el-input__inner')?.value || 'Date Picker').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'element-plus',
+          componentType: 'datepicker',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 📅 Ant Design Vue DatePicker
+    const antDatePickers = document.querySelectorAll('.ant-picker');
+    antDatePickers.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.ant-picker-input input')?.value || 'Date Picker').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'ant-design-vue',
+          componentType: 'datepicker',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 📅 Naive UI DatePicker
+    const naiveDatePickers = document.querySelectorAll('.n-date-picker');
+    naiveDatePickers.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.n-input__input-el')?.value || 'Date Picker').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'naive-ui',
+          componentType: 'datepicker',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 🔀 Element Plus Cascader
+    const elCascaders = document.querySelectorAll('.el-cascader');
+    elCascaders.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.el-input__inner')?.value || 'Cascader').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'element-plus',
+          componentType: 'cascader',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 🔀 Ant Design Vue Cascader
+    const antCascaders = document.querySelectorAll('.ant-cascader');
+    antCascaders.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.ant-cascader-input')?.value || 'Cascader').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'ant-design-vue',
+          componentType: 'cascader',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // ☑️ 框架 Checkbox（包装型，非原生）
+    const elCheckboxes = document.querySelectorAll('.el-checkbox:not(.el-checkbox__input)');
+    elCheckboxes.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.textContent || 'Checkbox').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'element-plus',
+          componentType: 'checkbox',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    const antCheckboxes = document.querySelectorAll('.ant-checkbox-wrapper');
+    antCheckboxes.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.textContent || 'Checkbox').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'ant-design-vue',
+          componentType: 'checkbox',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 🔘 Element Plus Radio
+    const elRadios = document.querySelectorAll('.el-radio');
+    elRadios.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.textContent || 'Radio').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'element-plus',
+          componentType: 'radio',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 🔘 Ant Design Vue Radio
+    const antRadios = document.querySelectorAll('.ant-radio-wrapper');
+    antRadios.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.textContent || 'Radio').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'ant-design-vue',
+          componentType: 'radio',
+          text: text,
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // 🔀 Element Plus Switch
+    const elSwitches = document.querySelectorAll('.el-switch');
+    elSwitches.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const isActive = wrapper.classList.contains('is-checked');
+        const text = `Switch (${isActive ? '开' : '关'})`;
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'element-plus',
+          componentType: 'switch',
+          text: text,
+          selector: getElementSelector(wrapper),
+          isActive: isActive
+        });
+      }
+    });
+
+    // 🔀 Ant Design Vue Switch
+    const antSwitches = document.querySelectorAll('.ant-switch');
+    antSwitches.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const isChecked = wrapper.classList.contains('ant-switch-checked');
+        const text = `Switch (${isChecked ? '开' : '关'})`;
+        elements.push({
+          element: wrapper,
+          type: 'component-interaction',
+          framework: 'ant-design-vue',
+          componentType: 'switch',
+          text: text,
+          selector: getElementSelector(wrapper),
+          isChecked: isChecked
         });
       }
     });
@@ -1206,6 +1399,30 @@ async function performInteraction (item, index, total) {
       } catch (e) {
         actionError = e.message;
       }
+    } else if (type === 'component-interaction') {
+      try {
+        // 记录交互前的值状态
+        const beforeState = captureComponentState(item);
+        const result = await performComponentInteraction(item);
+        actionSuccess = !!result.success;
+        actionError = result.error || null;
+
+        // 交互后验证值是否真正改变
+        if (actionSuccess) {
+          await delay(500);
+          const valueChanged = await verifyComponentValueChanged(item, beforeState);
+          if (!valueChanged) {
+            actionError = '值未变更';
+            actionSuccess = false;
+            notifyPopup('addLog', '  ⚠️ 警告：组件交互成功但值未改变', 'warning');
+          } else {
+            notifyPopup('addLog', '  ✓ 组件值已验证改变', 'success');
+          }
+        }
+        await delay(testConfig.delay || 1200);
+      } catch (e) {
+        actionError = e.message;
+      }
     }
 
     // 更新统计
@@ -1229,6 +1446,27 @@ async function performInteraction (item, index, total) {
       } catch (e) {
         console.log('[Web测试工具] 记录元素结果时出错:', e);
       }
+    }
+
+    // 📊 E2E场景追踪：记录本次交互步骤
+    try {
+      if (window.e2eTracker) {
+        const stepData = {
+          action: type,
+          target: item?.selector || item?.text || 'unknown',
+          framework: item?.framework || null,
+          componentType: item?.componentType || null,
+          success: actionSuccess,
+          error: actionError || null,
+          beforeValue: null,
+          afterValue: null,
+          duration: Date.now() - startTime,
+          apiCalls: apiRequests.map(r => ({ method: r.method, url: r.url, status: r.status }))
+        };
+        window.e2eTracker.recordStep(stepData);
+      }
+    } catch (e) {
+      console.log('[Web测试工具] E2E追踪记录失败:', e);
     }
 
     updateStatus();
@@ -1309,6 +1547,274 @@ async function waitForVisible (selectorFn, timeoutMs = 1500, intervalMs = 120) {
     await delay(intervalMs);
   }
   return null;
+}
+
+// 执行组件交互（DatePicker、Cascader、Checkbox等）
+async function performComponentInteraction (item) {
+  const { framework, componentType } = item;
+  try {
+    if (componentType === 'datepicker') {
+      return await performDatePickerInteraction(item, framework);
+    } else if (componentType === 'cascader') {
+      return await performCascaderInteraction(item, framework);
+    } else if (componentType === 'checkbox') {
+      return await performCheckboxInteraction(item, framework);
+    } else if (componentType === 'radio') {
+      return await performRadioInteraction(item, framework);
+    } else if (componentType === 'switch') {
+      return await performSwitchInteraction(item, framework);
+    }
+    return { success: false, error: '不支持的组件类型' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// DatePicker 交互：点击 → 等待日历 → 选择今天
+async function performDatePickerInteraction (item, framework) {
+  try {
+    if (framework === 'element-plus') {
+      const wrapper = item.element.closest('.el-date-picker, .el-datetime-picker') || item.element;
+      const trigger = wrapper.querySelector('.el-input__inner, .el-input');
+      if (!trigger) return { success: false, error: '未找到Element Plus DatePicker触发元素' };
+      trigger.click();
+      // 等待日历
+      const calendar = await waitForVisible(() => document.querySelector('.el-picker-panel'));
+      if (!calendar) return { success: false, error: '日历未出现' };
+      // 选择今天或第一个可用日期
+      const today = calendar.querySelector('.el-picker-panel__body [class*="today"], .el-picker-panel__body [class*="current"]');
+      const firstDate = today || calendar.querySelector('.el-picker-panel__body td:not(.disabled)');
+      if (!firstDate) return { success: false, error: '无可选日期' };
+      firstDate.click();
+      await delay(300);
+      notifyPopup('addLog', '  ✓ Element Plus DatePicker选择成功', 'success');
+      return { success: true };
+    } else if (framework === 'ant-design-vue') {
+      const wrapper = item.element.closest('.ant-picker') || item.element;
+      const trigger = wrapper.querySelector('.ant-picker-input input, .ant-picker');
+      if (!trigger) return { success: false, error: '未找到AntD DatePicker触发元素' };
+      trigger.click?.() || wrapper.click?.();
+      const calendar = await waitForVisible(() => document.querySelector('.ant-picker-dropdown'));
+      if (!calendar) return { success: false, error: '日历未出现' };
+      const dateCell = calendar.querySelector('.ant-picker-cell:not(.ant-picker-cell-disabled)');
+      if (!dateCell) return { success: false, error: '无可选日期' };
+      dateCell.click();
+      await delay(300);
+      notifyPopup('addLog', '  ✓ Ant Design DatePicker选择成功', 'success');
+      return { success: true };
+    } else if (framework === 'naive-ui') {
+      const wrapper = item.element.closest('.n-date-picker') || item.element;
+      const trigger = wrapper.querySelector('.n-input, .n-base-selection');
+      if (!trigger) return { success: false, error: '未找到Naive DatePicker触发元素' };
+      trigger.click();
+      const calendar = await waitForVisible(() => document.querySelector('.n-date-picker-panel'));
+      if (!calendar) return { success: false, error: '日历未出现' };
+      const dateCell = calendar.querySelector('.n-date-picker-date:not(.n-date-picker-date--disabled)');
+      if (!dateCell) return { success: false, error: '无可选日期' };
+      dateCell.click();
+      await delay(300);
+      notifyPopup('addLog', '  ✓ Naive UI DatePicker选择成功', 'success');
+      return { success: true };
+    }
+    return { success: false, error: '不支持的框架' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// Cascader 交互：逐级选择
+async function performCascaderInteraction (item, framework) {
+  try {
+    if (framework === 'element-plus') {
+      const wrapper = item.element.closest('.el-cascader') || item.element;
+      const trigger = wrapper.querySelector('.el-input__inner, .el-input');
+      if (!trigger) return { success: false, error: '未找到Element Plus Cascader触发元素' };
+      trigger.click();
+      await delay(300);
+      // 逐级选择
+      for (let level = 0; level < 3; level++) {
+        const panel = document.querySelector('.el-cascader-menu');
+        if (!panel) break;
+        const option = panel.querySelector('.el-cascader-node:not(.is-disabled)');
+        if (!option) break;
+        option.click();
+        await delay(400);
+      }
+      await delay(300);
+      // 检查面板关闭
+      const stillPanel = document.querySelector('.el-cascader-menu');
+      if (!stillPanel || stillPanel.offsetParent === null) {
+        notifyPopup('addLog', '  ✓ Element Plus Cascader选择成功', 'success');
+        return { success: true };
+      }
+      return { success: true };
+    } else if (framework === 'ant-design-vue') {
+      const wrapper = item.element.closest('.ant-cascader') || item.element;
+      const trigger = wrapper.querySelector('.ant-cascader-picker, .ant-select');
+      if (!trigger) return { success: false, error: '未找到AntD Cascader触发元素' };
+      trigger.click();
+      await delay(300);
+      // 逐级选择
+      for (let level = 0; level < 3; level++) {
+        const menu = document.querySelector('.ant-cascader-menus');
+        if (!menu) break;
+        const option = menu.querySelector('.ant-cascader-menu-item:not(.ant-cascader-menu-item-disabled)');
+        if (!option) break;
+        option.click();
+        await delay(400);
+      }
+      await delay(300);
+      notifyPopup('addLog', '  ✓ Ant Design Cascader选择成功', 'success');
+      return { success: true };
+    }
+    return { success: false, error: '不支持的框架' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// Checkbox 交互：选中未选中的项
+async function performCheckboxInteraction (item, framework) {
+  try {
+    if (framework === 'element-plus') {
+      const wrapper = item.element.closest('.el-checkbox') || item.element;
+      const input = wrapper.querySelector('.el-checkbox__input input, input[type="checkbox"]');
+      if (!input) return { success: false, error: '未找到Element Plus Checkbox' };
+      if (!input.checked) {
+        input.click();
+        await delay(200);
+      }
+      notifyPopup('addLog', '  ✓ Element Plus Checkbox选中成功', 'success');
+      return { success: true };
+    } else if (framework === 'ant-design-vue') {
+      const wrapper = item.element.closest('.ant-checkbox-wrapper') || item.element;
+      const input = wrapper.querySelector('input[type="checkbox"]');
+      if (!input) return { success: false, error: '未找到AntD Checkbox' };
+      if (!input.checked) {
+        input.click();
+        await delay(200);
+      }
+      notifyPopup('addLog', '  ✓ Ant Design Checkbox选中成功', 'success');
+      return { success: true };
+    }
+    return { success: false, error: '不支持的框架' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// Radio 交互：选中未选中的单选项
+async function performRadioInteraction (item, framework) {
+  try {
+    if (framework === 'element-plus') {
+      const wrapper = item.element.closest('.el-radio') || item.element;
+      const input = wrapper.querySelector('input[type="radio"]');
+      if (!input) return { success: false, error: '未找到Element Plus Radio' };
+      if (!input.checked) {
+        input.click();
+        await delay(200);
+        // 触发change事件
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      notifyPopup('addLog', '  ✓ Element Plus Radio选中成功', 'success');
+      return { success: true };
+    } else if (framework === 'ant-design-vue') {
+      const wrapper = item.element.closest('.ant-radio-wrapper') || item.element;
+      const input = wrapper.querySelector('input[type="radio"]');
+      if (!input) return { success: false, error: '未找到AntD Radio' };
+      if (!input.checked) {
+        input.click();
+        await delay(200);
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      notifyPopup('addLog', '  ✓ Ant Design Radio选中成功', 'success');
+      return { success: true };
+    }
+    return { success: false, error: '不支持的框架' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// Switch 交互：切换开关状态
+async function performSwitchInteraction (item, framework) {
+  try {
+    if (framework === 'element-plus') {
+      const wrapper = item.element.closest('.el-switch') || item.element;
+      const input = wrapper.querySelector('input[type="checkbox"]');
+      if (!input) return { success: false, error: '未找到Element Plus Switch' };
+      // 切换状态
+      input.click();
+      await delay(300);
+      const newState = input.checked ? '开' : '关';
+      notifyPopup('addLog', `  ✓ Element Plus Switch已${newState}`, 'success');
+      return { success: true };
+    } else if (framework === 'ant-design-vue') {
+      const wrapper = item.element.closest('.ant-switch') || item.element;
+      const input = wrapper.querySelector('input[type="checkbox"]');
+      if (!input) return { success: false, error: '未找到AntD Switch' };
+      // 切换状态
+      input.click();
+      await delay(300);
+      const newState = input.checked ? '开' : '关';
+      notifyPopup('addLog', `  ✓ Ant Design Switch已${newState}`, 'success');
+      return { success: true };
+    }
+    return { success: false, error: '不支持的框架' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// 验证组件值是否实际改变
+async function verifyComponentValueChanged (item, beforeState) {
+  try {
+    const { framework, componentType } = item;
+    const wrapper = item.element;
+
+    if (componentType === 'select') {
+      const afterValue = wrapper.querySelector('.el-input__inner, .ant-select-selection-item, .n-base-selection-label')?.value ||
+        wrapper.querySelector('.el-input__inner, .ant-select-selection-item, .n-base-selection-label')?.textContent;
+      return beforeState !== afterValue;
+    } else if (componentType === 'checkbox') {
+      const input = wrapper.querySelector('input[type="checkbox"]');
+      return input && input.checked !== beforeState;
+    } else if (componentType === 'radio') {
+      const input = wrapper.querySelector('input[type="radio"]');
+      return input && input.checked !== beforeState;
+    } else if (componentType === 'switch') {
+      const input = wrapper.querySelector('input[type="checkbox"]');
+      return input && input.checked !== beforeState;
+    } else if (componentType === 'datepicker') {
+      const afterValue = wrapper.querySelector('.el-input__inner, .ant-picker-input input, .n-input__input-el')?.value;
+      return beforeState !== afterValue;
+    }
+    return false;
+  } catch (e) {
+    console.log('[Web测试工具] 值验证失败:', e?.message || e);
+    return false;
+  }
+}
+
+// 获取组件当前值状态
+function captureComponentState (item) {
+  try {
+    const { componentType } = item;
+    const wrapper = item.element;
+
+    if (componentType === 'select') {
+      return wrapper.querySelector('.el-input__inner, .ant-select-selection-item, .n-base-selection-label')?.value ||
+        wrapper.querySelector('.el-input__inner, .ant-select-selection-item, .n-base-selection-label')?.textContent;
+    } else if (componentType === 'checkbox' || componentType === 'radio' || componentType === 'switch') {
+      const input = wrapper.querySelector('input[type="checkbox"], input[type="radio"]');
+      return input?.checked || false;
+    } else if (componentType === 'datepicker') {
+      return wrapper.querySelector('.el-input__inner, .ant-picker-input input, .n-input__input-el')?.value;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // 更新状态
@@ -1422,6 +1928,17 @@ function saveTestReport (stats, elements, apiRequests) {
         error: req.error,
         duration: req.duration || null
       })),
+      components: elements
+        .filter(el => el.framework && el.componentType)
+        .map((el, index) => ({
+          index: index + 1,
+          framework: el.framework,
+          componentType: el.componentType,
+          text: el.text,
+          selector: el.selector,
+          status: el.actionSuccess ? 'success' : (el.actionError ? 'failed' : 'skipped'),
+          error: el.actionError || null
+        })),
       pageInfo: {
         title: document.title,
         domain: window.location.hostname,
@@ -1454,6 +1971,12 @@ async function startAutomatedTest () {
     testedUrls.clear();
     originalUrl = window.location.href;
     testStartDomain = getBaseDomain(originalUrl);
+
+    // 📊 初始化E2E场景追踪
+    if (window.e2eTracker) {
+      window.e2eTracker.reset();
+      console.log('[Web测试工具] ✓ E2E场景追踪已初始化');
+    }
 
     // 记录测试开始时间
     window.testStartTime = Date.now();
@@ -1659,6 +2182,17 @@ async function startAutomatedTest () {
 
       // 保存测试报告
       saveTestReport(testStats, uniqueElements, apiRequests);
+
+      // 📊 保存E2E场景数据到storage
+      try {
+        if (window.e2eTracker) {
+          const scenarioSummary = window.e2eTracker.generateSummary();
+          chrome.storage.local.set({ e2eScenario: scenarioSummary });
+          console.log('[Web测试工具] ✓ E2E场景数据已保存到storage，共', scenarioSummary.steps?.length || 0, '步');
+        }
+      } catch (e) {
+        console.log('[Web测试工具] E2E数据保存失败:', e);
+      }
 
       // 保存AI洞察
       try {
