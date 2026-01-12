@@ -27,7 +27,8 @@ class AITestOrchestrator {
   async init () {
     try {
       const config = await chrome.storage.local.get(['qwenApiKey', 'qwenEnabled']);
-      if (config.qwenApiKey && config.qwenEnabled && typeof QwenIntegration !== 'undefined') {
+      const enabled = (config.qwenEnabled ?? true);
+      if (config.qwenApiKey && enabled && typeof QwenIntegration !== 'undefined') {
         this.qwen = new QwenIntegration(config.qwenApiKey);
         console.log('[AI编排器] ✅ Qwen AI 已就绪，开启智能测试模式');
       } else {

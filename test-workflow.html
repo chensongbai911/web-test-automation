@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>完整工作流测试页面</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 28px;
+      }
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+      }
+
+      /* 表单样式 */
+      .form-section {
+        margin-bottom: 40px;
+        padding: 20px;
+        background: #f5f5f5;
+        border-radius: 8px;
+      }
+
+      .form-section h2 {
+        color: #333;
+        font-size: 18px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        color: #555;
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      input[type="text"],
+      input[type="email"],
+      input[type="password"],
+      input[type="number"],
+      input[type="date"],
+      select,
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: border-color 0.3s;
+      }
+
+      input[type="text"]:focus,
+      input[type="email"]:focus,
+      input[type="password"]:focus,
+      input[type="number"]:focus,
+      input[type="date"]:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      /* 按钮样式 */
+      button,
+      input[type="submit"],
+      input[type="reset"] {
+        padding: 10px 20px;
+        margin-right: 10px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #ddd;
+      }
+
+      .btn-secondary:hover {
+        background: #e0e0e0;
+      }
+
+      .btn-success {
+        background: #48bb78;
+        color: white;
+      }
+
+      .btn-success:hover {
+        background: #38a169;
+      }
+
+      .btn-danger {
+        background: #f56565;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #e53e3e;
+      }
+
+      /* 复选框和单选框 */
+      .checkbox-group,
+      .radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      input[type="checkbox"],
+      input[type="radio"] {
+        margin-right: 8px;
+        cursor: pointer;
+      }
+
+      /* 表格样式 */
+      .table-section {
+        margin-top: 20px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        margin-top: 10px;
+      }
+
+      table thead {
+        background: #667eea;
+        color: white;
+      }
+
+      table th,
+      table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+
+      table tbody tr:hover {
+        background: #f5f5f5;
+      }
+
+      table tbody tr:nth-child(even) {
+        background: #fafafa;
+      }
+
+      /* iframe */
+      .iframe-section {
+        margin-top: 20px;
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 20px;
+      }
+
+      iframe {
+        width: 100%;
+        height: 300px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      /* 图表 */
+      .chart-section {
+        margin-top: 20px;
+      }
+
+      canvas {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      /* 链接 */
+      .links-section {
+        margin-top: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      a {
+        color: #667eea;
+        text-decoration: none;
+        padding: 8px 12px;
+        border: 1px solid #667eea;
+        border-radius: 4px;
+        display: inline-block;
+        transition: all 0.3s;
+      }
+
+      a:hover {
+        background: #667eea;
+        color: white;
+      }
+
+      /* 无障碍属性示意 */
+      .accessibility-info {
+        background: #e6f7ff;
+        border-left: 4px solid #1890ff;
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #0050b3;
+        margin-top: 10px;
+      }
+
+      .tab-container {
+        margin-top: 20px;
+      }
+
+      .tab-buttons {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 20px;
+      }
+
+      .tab-button {
+        padding: 10px 20px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        color: #666;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.3s;
+      }
+
+      .tab-button.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+      }
+
+      .tab-content {
+        display: none;
+        padding: 20px;
+        background: #f5f5f5;
+        border-radius: 4px;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🧪 Web自动化测试 - 完整工作流测试页面</h1>
+      <p class="subtitle">
+        此页面包含表单、按钮、链接、表格、选择器、日期、级联选择、复选框、单选框、开关、标签页、折叠面板、iframe、图表、无障碍等全量组件，用于验证AI智能分析与自动化测试流程
+      </p>
+
+      <!-- ========== 表单section ========== -->
+      <div class="form-section">
+        <h2>📋 用户信息表单</h2>
+        <form id="userForm" onsubmit="handleFormSubmit(event)">
+          <div class="form-group">
+            <label for="username"
+              >用户名 <span style="color: red">*</span></label
+            >
+            <input
+              type="text"
+              id="username"
+              name="username"
+              required
+              placeholder="请输入用户名（至少3个字符）"
+              minlength="3"
+              maxlength="20"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email">邮箱 <span style="color: red">*</span></label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              placeholder="请输入有效的邮箱地址"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">密码 <span style="color: red">*</span></label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              placeholder="密码需至少6个字符"
+              minlength="6"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="age">年龄</label>
+            <input
+              type="number"
+              id="age"
+              name="age"
+              min="18"
+              max="120"
+              placeholder="请输入年龄"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="birthDate">出生日期</label>
+            <input type="date" id="birthDate" name="birthDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="department"
+              >部门 <span style="color: red">*</span></label
+            >
+            <select id="department" name="department" required>
+              <option value="">-- 请选择部门 --</option>
+              <option value="dev">开发部</option>
+              <option value="test">测试部</option>
+              <option value="product">产品部</option>
+              <option value="design">设计部</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="bio">个人简介</label>
+            <textarea
+              id="bio"
+              name="bio"
+              placeholder="请输入不超过200字的个人简介"
+              maxlength="200"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>权限选择</label>
+            <div class="checkbox-group">
+              <label
+                ><input
+                  type="checkbox"
+                  name="permissions"
+                  value="read"
+                  aria-label="读权限"
+                />
+                读</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="permissions"
+                  value="write"
+                  aria-label="写权限"
+                />
+                写</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="permissions"
+                  value="delete"
+                  aria-label="删除权限"
+                />
+                删</label
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>用户类型</label>
+            <div class="radio-group">
+              <label
+                ><input
+                  type="radio"
+                  name="userType"
+                  value="admin"
+                  aria-label="管理员"
+                />
+                管理员</label
+              >
+              <label
+                ><input
+                  type="radio"
+                  name="userType"
+                  value="user"
+                  aria-label="普通用户"
+                />
+                普通用户</label
+              >
+              <label
+                ><input
+                  type="radio"
+                  name="userType"
+                  value="guest"
+                  aria-label="游客"
+                />
+                游客</label
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label
+              ><input
+                type="checkbox"
+                name="terms"
+                required
+                aria-label="同意服务条款"
+              />
+              我同意服务条款和隐私政策</label
+            >
+          </div>
+
+          <div style="margin-top: 20px">
+            <button type="submit" class="btn-primary">✅ 提交表单</button>
+            <button type="reset" class="btn-secondary">🔄 重置</button>
+          </div>
+
+          <div class="accessibility-info">
+            ♿
+            无障碍特性：表单包含必填字段标记、ARIA标签、错误验证、键盘导航支持
+          </div>
+        </form>
+      </div>
+
+      <!-- ========== 按钮interactions section ========== -->
+      <div class="form-section">
+        <h2>🔘 交互按钮演示</h2>
+
+        <button class="btn-primary" onclick="showAlert()">💬 显示提示框</button>
+        <button class="btn-success" onclick="handleAction('success')">
+          ✨ 成功操作
+        </button>
+        <button class="btn-danger" onclick="handleAction('danger')">
+          ⚠️ 危险操作
+        </button>
+        <button class="btn-secondary" onclick="openModal()">
+          🪟 打开对话框
+        </button>
+        <button class="btn-primary" id="toggleBtn" onclick="toggleContent()">
+          🔀 切换内容
+        </button>
+        <button class="btn-secondary" onclick="downloadFile()">
+          📥 下载文件
+        </button>
+        <button
+          class="btn-success"
+          id="counterBtn"
+          onclick="incrementCounter()"
+        >
+          📊 点击计数
+        </button>
+
+        <div
+          id="hiddenContent"
+          style="
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #fffacd;
+            border-radius: 4px;
+          "
+        >
+          <p>🎉 这是被切换显示的隐藏内容。包含了一些额外的信息和链接。</p>
+          <a href="#">这是隐藏内容中的链接</a>
+        </div>
+      </div>
+
+      <!-- ========== 标签页/折叠面板 section ========== -->
+      <div class="form-section">
+        <h2>📑 标签页与折叠面板</h2>
+
+        <div class="tab-container">
+          <div class="tab-buttons">
+            <button class="tab-button active" onclick="switchTab(0)">
+              📌 基础信息
+            </button>
+            <button class="tab-button" onclick="switchTab(1)">
+              🔒 安全设置
+            </button>
+            <button class="tab-button" onclick="switchTab(2)">
+              🔔 通知设置
+            </button>
+          </div>
+
+          <div class="tab-content active" id="tab-0">
+            <p>这是基础信息标签页面。包含用户的基本资料和个人设置。</p>
+            <input type="text" placeholder="编辑基础信息" />
+          </div>
+
+          <div class="tab-content" id="tab-1">
+            <p>这是安全设置标签页面。管理账户安全和隐私相关设置。</p>
+            <label><input type="checkbox" /> 启用两步验证</label><br />
+            <label><input type="checkbox" /> 启用登录提醒</label>
+          </div>
+
+          <div class="tab-content" id="tab-2">
+            <p>这是通知设置标签页面。配置各类通知的偏好设置。</p>
+            <label><input type="checkbox" checked /> 邮件通知</label><br />
+            <label><input type="checkbox" /> 短信通知</label><br />
+            <label><input type="checkbox" checked /> 站内通知</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 表格 section ========== -->
+      <div class="form-section">
+        <h2>📊 数据表格</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>员工ID</th>
+              <th>姓名</th>
+              <th>部门</th>
+              <th>职位</th>
+              <th>入职日期</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>001</td>
+              <td>张三</td>
+              <td>开发部</td>
+              <td>高级工程师</td>
+              <td>2020-01-15</td>
+              <td>
+                <button class="btn-secondary" onclick="editRow(this)">
+                  ✏️ 编辑
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td>002</td>
+              <td>李四</td>
+              <td>测试部</td>
+              <td>测试工程师</td>
+              <td>2020-06-20</td>
+              <td>
+                <button class="btn-secondary" onclick="editRow(this)">
+                  ✏️ 编辑
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td>003</td>
+              <td>王五</td>
+              <td>产品部</td>
+              <td>产品经理</td>
+              <td>2021-03-10</td>
+              <td>
+                <button class="btn-secondary" onclick="editRow(this)">
+                  ✏️ 编辑
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td>004</td>
+              <td>赵六</td>
+              <td>设计部</td>
+              <td>UI设计师</td>
+              <td>2021-09-01</td>
+              <td>
+                <button class="btn-secondary" onclick="editRow(this)">
+                  ✏️ 编辑
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top: 10px; color: #666; font-size: 12px">
+          📌 表格包含 4 行数据，支持编辑操作
+        </p>
+      </div>
+
+      <!-- ========== 链接 section ========== -->
+      <div class="form-section">
+        <h2>🔗 导航链接</h2>
+        <div class="links-section">
+          <a href="/" aria-label="返回首页">🏠 首页</a>
+          <a href="/about" aria-label="关于我们">ℹ️ 关于</a>
+          <a href="/services" aria-label="服务页面">🛎️ 服务</a>
+          <a href="/contact" aria-label="联系我们">📧 联系</a>
+          <a href="/blog" aria-label="博客页面">📝 博客</a>
+          <a
+            href="https://github.com"
+            target="_blank"
+            aria-label="GitHub外部链接"
+            >🐙 GitHub</a
+          >
+        </div>
+      </div>
+
+      <!-- ========== iframe section ========== -->
+      <div class="form-section">
+        <h2>🪟 嵌入内容（iframe）</h2>
+        <div class="iframe-section">
+          <p>以下是嵌入的外部内容（使用iframe）：</p>
+          <iframe
+            src="https://www.w3schools.com/html/html_iframe.asp"
+            title="W3Schools HTML文档"
+          ></iframe>
+        </div>
+      </div>
+
+      <!-- ========== 图表 section ========== -->
+      <div class="form-section">
+        <h2>📈 图表展示</h2>
+        <div class="chart-section">
+          <p>以下是使用Canvas绘制的图表：</p>
+          <canvas id="myChart" width="400" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- ========== 搜索与过滤 section ========== -->
+      <div class="form-section">
+        <h2>🔍 搜索与过滤</h2>
+        <div class="form-group">
+          <input type="text" id="searchInput" placeholder="搜索内容..." />
+        </div>
+        <div id="searchResults" style="margin-top: 10px">
+          <p style="color: #999">搜索结果将在此显示</p>
+        </div>
+      </div>
+
+      <!-- ========== 级联选择 section ========== -->
+      <div class="form-section">
+        <h2>🌳 级联选择器</h2>
+        <div class="form-group">
+          <label for="province">省份</label>
+          <select id="province" onchange="updateCities()">
+            <option value="">-- 请选择省份 --</option>
+            <option value="beijing">北京市</option>
+            <option value="shanghai">上海市</option>
+            <option value="guangdong">广东省</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="city">城市</label>
+          <select id="city">
+            <option value="">-- 请先选择省份 --</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ========== 开关示例 section ========== -->
+      <div class="form-section">
+        <h2>⚡ 开关与切换</h2>
+        <div class="form-group">
+          <label>
+            <input
+              type="checkbox"
+              id="notificationToggle"
+              onchange="toggleNotification()"
+            />
+            启用通知
+          </label>
+        </div>
+        <div
+          id="notificationPanel"
+          style="
+            display: none;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 4px;
+            margin-top: 10px;
+          "
+        >
+          <p>✅ 通知已启用</p>
+        </div>
+      </div>
+
+      <!-- ========== 模态框 ========== -->
+      <div
+        id="modal"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+          justify-content: center;
+          align-items: center;
+        "
+      >
+        <div
+          style="
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+          "
+        >
+          <h2>🪟 模态对话框</h2>
+          <p>这是一个模态对话框示例。它覆盖了整个屏幕，直到被关闭。</p>
+          <input
+            type="text"
+            placeholder="在对话框中输入内容"
+            style="
+              width: 100%;
+              padding: 8px;
+              margin: 10px 0;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+            "
+          />
+          <div style="margin-top: 20px; text-align: right">
+            <button class="btn-secondary" onclick="closeModal()">关闭</button>
+            <button class="btn-primary" onclick="handleModalSubmit()">
+              确定
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style="
+          margin-top: 40px;
+          padding: 20px;
+          background: #f0f0f0;
+          border-radius: 8px;
+          text-align: center;
+        "
+      >
+        <p style="color: #666; margin: 0">
+          ✨ 此页面包含完整的测试场景，用于验证AI分析和自动化测试流程
+        </p>
+      </div>
+    </div>
+
+    <script>
+      // 表单提交
+      function handleFormSubmit(event) {
+        event.preventDefault();
+        alert("✅ 表单提交成功！");
+        console.log("Form submitted with data:", new FormData(event.target));
+      }
+
+      // 提示框
+      function showAlert() {
+        alert("💬 这是一个提示框示例");
+      }
+
+      // 操作处理
+      function handleAction(type) {
+        alert(`⚡ 执行了 ${type === "success" ? "成功" : "危险"} 操作`);
+      }
+
+      // 模态框
+      function openModal() {
+        document.getElementById("modal").style.display = "flex";
+      }
+
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
+      }
+
+      function handleModalSubmit() {
+        alert("✅ 对话框已提交");
+        closeModal();
+      }
+
+      // 切换内容
+      function toggleContent() {
+        const content = document.getElementById("hiddenContent");
+        content.style.display =
+          content.style.display === "none" ? "block" : "none";
+      }
+
+      // 下载文件
+      function downloadFile() {
+        alert("📥 文件下载已启动");
+      }
+
+      // 点击计数
+      let counter = 0;
+      function incrementCounter() {
+        counter++;
+        document.getElementById(
+          "counterBtn"
+        ).textContent = `📊 点击计数 (${counter})`;
+      }
+
+      // 标签页切换
+      function switchTab(index) {
+        const buttons = document.querySelectorAll(".tab-button");
+        const contents = document.querySelectorAll(".tab-content");
+
+        buttons.forEach((btn, i) => {
+          btn.classList.toggle("active", i === index);
+        });
+
+        contents.forEach((content, i) => {
+          content.classList.toggle("active", i === index);
+        });
+      }
+
+      // 表格编辑
+      function editRow(button) {
+        alert(
+          "✏️ 编辑行：" +
+            button.parentElement.parentElement.cells[1].textContent
+        );
+      }
+
+      // 级联选择
+      function updateCities() {
+        const provinceSelect = document.getElementById("province");
+        const citySelect = document.getElementById("city");
+        const citiesByProvince = {
+          beijing: ["朝阳区", "海淀区", "丰台区"],
+          shanghai: ["浦东新区", "徐汇区", "黄浦区"],
+          guangdong: ["广州市", "深圳市", "佛山市"],
+        };
+
+        citySelect.innerHTML = '<option value="">-- 请选择城市 --</option>';
+        const province = provinceSelect.value;
+        if (province && citiesByProvince[province]) {
+          citiesByProvince[province].forEach((city) => {
+            const option = document.createElement("option");
+            option.value = city;
+            option.textContent = city;
+            citySelect.appendChild(option);
+          });
+        }
+      }
+
+      // 开关切换
+      function toggleNotification() {
+        const toggle = document.getElementById("notificationToggle");
+        const panel = document.getElementById("notificationPanel");
+        panel.style.display = toggle.checked ? "block" : "none";
+      }
+
+      // 搜索功能
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        const query = e.target.value;
+        const results = document.getElementById("searchResults");
+        if (query) {
+          results.innerHTML = `<p>搜索结果：找到与 "${query}" 相关的 3 项内容</p>`;
+        } else {
+          results.innerHTML = '<p style="color: #999;">搜索结果将在此显示</p>';
+        }
+      });
+
+      // 绘制图表
+      window.addEventListener("load", () => {
+        const canvas = document.getElementById("myChart");
+        if (canvas && canvas.getContext) {
+          const ctx = canvas.getContext("2d");
+
+          // 绘制简单的柱状图
+          const data = [10, 24, 36, 18, 7, 15];
+          const barWidth = 50;
+          const maxHeight = 150;
+          const maxValue = Math.max(...data);
+
+          data.forEach((value, index) => {
+            const height = (value / maxValue) * maxHeight;
+            const x = 40 + index * 60;
+            const y = 200 - height;
+
+            // 绘制柱子
+            ctx.fillStyle = "#667eea";
+            ctx.fillRect(x, y, barWidth, height);
+
+            // 绘制数值标签
+            ctx.fillStyle = "#333";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(value, x + barWidth / 2, 215);
+          });
+
+          // 绘制坐标轴
+          ctx.strokeStyle = "#999";
+          ctx.beginPath();
+          ctx.moveTo(30, 200);
+          ctx.lineTo(400, 200);
+          ctx.moveTo(30, 200);
+          ctx.lineTo(30, 30);
+          ctx.stroke();
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -17,6 +17,68 @@ const customTab = document.getElementById('custom-tab');
 const urlInput = document.getElementById('urlInput');
 const startTestBtn = document.getElementById('startTestBtn');
 const startIntelligentTestBtn = document.getElementById('startIntelligentTestBtn');
+// 全局加载提示（用于多阶段进度显示）
+const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
+const globalLoadingEmoji = document.getElementById('globalLoadingEmoji');
+const globalLoadingTitle = document.getElementById('globalLoadingTitle');
+const globalLoadingText = document.getElementById('globalLoadingText');
+const globalLoadingProgressBar = document.getElementById('globalLoadingProgressBar');
+const globalLoadingPercent = document.getElementById('globalLoadingPercent');
+
+/**
+ * 显示全局进度加载提示
+ * @param {Object} options - 配置对象
+ *   - title: 标题（如"正在分析意图"）
+ *   - text: 详细文本（如"正在分析页面..."）
+ *   - emoji: 图标（默认⏳）
+ *   - percent: 进度百分比（0-100）
+ */
+function showGlobalLoading (options = {}) {
+  if (!globalLoadingOverlay) return;
+  const {
+    title = '正在处理中...',
+    text = '请稍候...',
+    emoji = '⏳',
+    percent = 0
+  } = options;
+
+  if (globalLoadingEmoji) globalLoadingEmoji.textContent = emoji;
+  if (globalLoadingTitle) globalLoadingTitle.textContent = title;
+  if (globalLoadingText) globalLoadingText.textContent = text;
+  if (globalLoadingProgressBar) globalLoadingProgressBar.style.width = Math.min(100, percent) + '%';
+  if (globalLoadingPercent) globalLoadingPercent.textContent = Math.min(100, percent);
+
+  globalLoadingOverlay.style.display = 'flex';
+}
+
+/**
+ * 更新全局进度加载提示
+ * @param {Object} updates - 更新字段（同showGlobalLoading）
+ */
+function updateGlobalLoading (updates = {}) {
+  if (!globalLoadingOverlay || globalLoadingOverlay.style.display === 'none') return;
+
+  const {
+    title,
+    text,
+    emoji,
+    percent
+  } = updates;
+
+  if (emoji !== undefined && globalLoadingEmoji) globalLoadingEmoji.textContent = emoji;
+  if (title !== undefined && globalLoadingTitle) globalLoadingTitle.textContent = title;
+  if (text !== undefined && globalLoadingText) globalLoadingText.textContent = text;
+  if (percent !== undefined && globalLoadingProgressBar) globalLoadingProgressBar.style.width = Math.min(100, percent) + '%';
+  if (percent !== undefined && globalLoadingPercent) globalLoadingPercent.textContent = Math.min(100, percent);
+}
+
+/**
+ * 隐藏全局进度加载提示
+ */
+function hideGlobalLoading () {
+  if (!globalLoadingOverlay) return;
+  globalLoadingOverlay.style.display = 'none';
+}
 const stopTestBtn = document.getElementById('stopTestBtn');
 const viewReportBtn = document.getElementById('viewReportBtn');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -462,79 +524,100 @@ startTestBtn.addEventListener('click', async () => {
 startIntelligentTestBtn.addEventListener('click', async () => {
   const url = urlInput.value.trim();
   let intent = (testIntentInput?.value || '').trim();
-  
+
   if (!url) {
     alert('❌ 请输入目标网址');
     return;
   }
-  
+
   // 如果没有意图，先进行页面分析
   if (!intent) {
     addLog('🔍 正在分析页面功能...', 'info');
-    
+    // 显示主界面加载提示
+    showGlobalLoading({
+      title: '正在分析意图',
+      text: '🔍 正在分析页面并生成意图...',
+      emoji: '🔍',
+      percent: 25
+    });
+
     try {
       chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-        const activeTab = tabs[0];
-        let targetTab = activeTab;
-        
-        // 检查是否需要打开新标签页
-        if (!activeTab.url || !activeTab.url.startsWith(url)) {
-          targetTab = await new Promise((resolve) => {
-            chrome.tabs.create({ url }, (tab) => resolve(tab));
-          });
-          await waitForPageReady(targetTab.id, url, 15000);
-          await ensureContentScriptReady(targetTab.id);
-        }
+        try {
+          const activeTab = tabs[0];
+          let targetTab = activeTab;
 
-        // 发送分析页面命令
-        chrome.tabs.sendMessage(targetTab.id, { 
-          action: 'analyzePageForIntent',
-          url: url
-        }).then((resp) => {
-          if (resp && resp.success && resp.pageAnalysis) {
-            // 生成自动化的测试意图建议
-            const analysis = resp.pageAnalysis;
-            let suggestion = '';
-            
-            // 基于页面分析生成建议
-            if (analysis.forms && analysis.forms.length > 0) {
-              suggestion += `测试${analysis.forms.length}个表单的填写和提交流程，`;
-            }
-            if (analysis.buttons && analysis.buttons.length > 0) {
-              suggestion += `验证${analysis.buttons.length}个按钮的交互功能，`;
-            }
-            if (analysis.links && analysis.links.length > 0) {
-              suggestion += `测试${analysis.links.length}个链接的跳转，`;
-            }
-            if (analysis.tables && analysis.tables.length > 0) {
-              suggestion += `检查${analysis.tables.length}个数据表格的显示，`;
-            }
-            
-            // 如果没有生成建议，使用通用建议
-            if (!suggestion) {
-              suggestion = '进行完整的页面功能测试，包括所有交互元素和页面导航';
-            }
-            
-            // 移除末尾的逗号
-            suggestion = suggestion.replace(/，$/, '');
-            
-            // 填入testIntentInput
-            if (testIntentInput) {
-              testIntentInput.value = suggestion;
-              testIntentInput.focus();
-              testIntentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              addLog('✓ AI已自动分析页面并生成测试建议，您可以修改后继续点击按钮开始测试', 'success');
-            }
-          } else {
-            addLog('⚠️ 页面分析失败，请手动填写测试意图', 'warning');
+          // 检查是否需要打开新标签页
+          if (!activeTab.url || !activeTab.url.startsWith(url)) {
+            targetTab = await new Promise((resolve) => {
+              chrome.tabs.create({ url }, (tab) => resolve(tab));
+            });
+            await waitForPageReady(targetTab.id, url, 15000);
+            await ensureContentScriptReady(targetTab.id);
           }
-        }).catch((error) => {
-          addLog('⚠️ 页面分析出错，请手动填写测试意图', 'warning');
-          console.error('[Popup] 页面分析错误:', error);
-        });
+
+          // 发送分析页面命令
+          updateGlobalLoading({ percent: 50, text: '正在提取页面结构...' });
+          chrome.tabs.sendMessage(targetTab.id, {
+            action: 'analyzePageForIntent',
+            url: url
+          }).then((resp) => {
+            if (resp && resp.success && resp.pageAnalysis) {
+              // 优先使用内容脚本生成的高质量摘要
+              let suggestion = (resp.intentSuggestion || '').trim();
+              const analysis = resp.pageAnalysis;
+
+              // 若无摘要，基于结构化分析生成更全面的建议
+              if (!suggestion) {
+                const parts = [];
+                if (Array.isArray(analysis.forms) && analysis.forms.length) {
+                  const requiredSum = analysis.forms.reduce((a, b) => a + (b.requiredCount || 0), 0);
+                  parts.push(`测试${analysis.forms.length}个表单（必填${requiredSum}项，含校验与提交）`);
+                }
+                if (Array.isArray(analysis.buttons)) parts.push(`验证${analysis.buttons.length}个按钮交互与弹框处理`);
+                if (Array.isArray(analysis.links)) parts.push(`测试${analysis.links.length}个链接的同域跳转与导航`);
+                if (Array.isArray(analysis.tables) && analysis.tables.length) parts.push(`检查${analysis.tables.length}个表格的分页/排序/搜索与数据渲染`);
+                const ui = analysis.uiComponents || {};
+                const compTotal = Object.values(ui).reduce((a, b) => a + (b || 0), 0);
+                if (compTotal) parts.push('覆盖选择器/日期/级联/复选/单选/开关、标签页/折叠面板');
+                if (analysis.charts?.canvasCount) parts.push('验证图表渲染与画布存在');
+                if (Array.isArray(analysis.iframes) && analysis.iframes.length) parts.push(`处理${analysis.iframes.length}个iframe嵌入内容`);
+                if (analysis.hasAuthFlow) parts.push('校验登录/注册相关流程与错误提示');
+                if (analysis.hasFileUpload) parts.push('测试文件上传与大小/类型校验');
+                parts.push('校验页面导航与接口响应、可访问性（alt/label/ARIA）');
+                suggestion = parts.join('，').replace(/，$/, '');
+              }
+
+              // 填充意图文本框
+              if (testIntentInput) {
+                testIntentInput.value = suggestion || '进行完整的页面功能测试，包括所有交互元素和页面导航';
+                testIntentInput.focus();
+                testIntentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+              // 更新加载提示为完成
+              updateGlobalLoading({ percent: 100, text: '✅ 意图生成完成' });
+              setTimeout(() => hideGlobalLoading(), 500);
+              addLog('✓ AI已自动分析页面并生成测试建议，您可以修改后继续点击按钮开始测试', 'success');
+            } else {
+              // 分析失败
+              hideGlobalLoading();
+              addLog('⚠️ 页面分析失败，请手动填写测试意图', 'warning');
+            }
+          }).catch((error) => {
+            // 请求失败
+            hideGlobalLoading();
+            addLog('⚠️ 页面分析出错，请手动填写测试意图', 'warning');
+            console.error('[Popup] 页面分析错误:', error);
+          });
+        } catch (error) {
+          hideGlobalLoading();
+          addLog('⚠️ 自动分析失败，请手动填写测试意图', 'warning');
+          console.error('[Popup] 自动分析异常:', error);
+        }
       });
       return;
     } catch (error) {
+      hideGlobalLoading();
       addLog('⚠️ 自动分析失败，请手动填写测试意图', 'warning');
       console.error('[Popup] 自动分析异常:', error);
       return;
@@ -564,9 +647,19 @@ startIntelligentTestBtn.addEventListener('click', async () => {
         }
 
         addLog('🤖 正在理解测试意图并生成计划...', 'info');
+        // 显示生成计划进度
+        showGlobalLoading({
+          title: '正在生成测试计划',
+          text: '🤖 AI正在理解意图并生成测试策略...',
+          emoji: '🤖',
+          percent: 30
+        });
         chrome.tabs.sendMessage(targetTab.id, { action: 'startIntelligentTest', userIntent: intent }).then((resp) => {
           if (resp && resp.success) {
             const plan = resp.plan || {};
+            // 更新进度
+            updateGlobalLoading({ percent: 70, text: '正在保存计划配置...' });
+
             // 展示计划
             if (aiPlanContainer) {
               aiPlanContainer.style.display = 'block';
@@ -602,9 +695,18 @@ startIntelligentTestBtn.addEventListener('click', async () => {
             chrome.storage.local.set({ savedConfig: config });
             urlInput.value = url; // 保持一致
 
+            // 更新进度为开始执行测试
+            updateGlobalLoading({
+              title: '正在执行测试',
+              percent: 90,
+              text: '⚙️ 测试策略已生成，正在启动自动化测试...',
+              emoji: '⚙️'
+            });
+
             // 复用现有自动测试启动
             startAutoTest();
           } else {
+            hideGlobalLoading();
             addLog('❌ AI意图理解失败: ' + (resp?.error || '未知错误'), 'error');
             // 恢复按钮状态
             startIntelligentTestBtn.disabled = false;
@@ -612,6 +714,7 @@ startIntelligentTestBtn.addEventListener('click', async () => {
             if (label) label.textContent = '让AI智能分析';
           }
         }).catch((error) => {
+          hideGlobalLoading();
           addLog('❌ 智能测试入口失败: ' + error.message, 'error');
           // 恢复按钮状态
           startIntelligentTestBtn.disabled = false;
@@ -619,6 +722,7 @@ startIntelligentTestBtn.addEventListener('click', async () => {
           if (label) label.textContent = '让AI智能分析';
         });
       } catch (innerError) {
+        hideGlobalLoading();
         console.error('[Popup] 智能测试内部错误:', innerError);
         addLog('❌ 智能分析执行出错: ' + innerError.message, 'error');
         // 恢复按钮状态
@@ -630,6 +734,7 @@ startIntelligentTestBtn.addEventListener('click', async () => {
       }
     });
   } catch (outerError) {
+    hideGlobalLoading();
     console.error('[Popup] 智能测试外部错误:', outerError);
     addLog('❌ 智能测试启动失败: ' + outerError.message, 'error');
     // 恢复按钮状态
@@ -722,6 +827,16 @@ async function startAutoTest () {
   logContainer = document.getElementById('logContainer');
 
   addLog('🚀 正在启动自动测试...', 'info');
+
+  // 显示执行阶段的加载提示（若尚未显示）
+  if (globalLoadingOverlay.style.display === 'none') {
+    showGlobalLoading({
+      title: '正在执行测试',
+      text: '🚀 自动化测试进行中，请稍候...',
+      emoji: '🚀',
+      percent: 10
+    });
+  }
 
   // 打开或导航到目标网址
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -1172,12 +1287,23 @@ testQwenBtn.addEventListener('click', async () => {
   qwenTestResult.style.background = '#fff3cd';
   qwenTestResult.style.color = '#856404';
 
-  // 这里可以添加实际的连接测试逻辑
-  setTimeout(() => {
-    qwenTestResult.textContent = '✅ 连接成功';
-    qwenTestResult.style.background = '#d4edda';
-    qwenTestResult.style.color = '#155724';
-  }, 1500);
+  try {
+    const [tab] = await new Promise(resolve => chrome.tabs.query({ active: true, currentWindow: true }, resolve));
+    const resp = await chrome.tabs.sendMessage(tab.id, { action: 'testQwenConnection', apiKey });
+    if (resp && resp.success) {
+      qwenTestResult.textContent = '✅ 连接成功';
+      qwenTestResult.style.background = '#d4edda';
+      qwenTestResult.style.color = '#155724';
+    } else {
+      qwenTestResult.textContent = `❌ 连接失败：${resp?.message || '未知错误'}`;
+      qwenTestResult.style.background = '#f8d7da';
+      qwenTestResult.style.color = '#721c24';
+    }
+  } catch (e) {
+    qwenTestResult.textContent = `❌ 连接异常：${e.message || '未知异常'}`;
+    qwenTestResult.style.background = '#f8d7da';
+    qwenTestResult.style.color = '#721c24';
+  }
 });
 
 // =============================================
@@ -1237,6 +1363,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       if (request.progress) {
         progressBar.style.width = request.progress + '%';
+        // 同步更新全局加载提示进度（若显示中）
+        if (globalLoadingOverlay && globalLoadingOverlay.style.display !== 'none') {
+          updateGlobalLoading({
+            percent: Math.min(90, 10 + request.progress * 0.8),
+            text: `⚙️ 已测试: ${request.testedCount || 0} 项，成功: ${request.successCount || 0} 项`
+          });
+        }
       }
     }
   } else if (request.action === 'updateStatus') {
@@ -1250,12 +1383,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const total = d.totalButtons || 0;
       const pct = total > 0 ? Math.round((d.testedCount || 0) / total * 100) : 0;
       progressBar.style.width = pct + '%';
+
+      // 同步更新全局加载提示进度（若显示中）
+      if (globalLoadingOverlay && globalLoadingOverlay.style.display !== 'none') {
+        updateGlobalLoading({
+          percent: Math.min(90, 10 + pct * 0.8),
+          text: `⚙️ 已测试: ${d.testedCount || 0} 项，成功: ${d.successCount || 0} 项`
+        });
+      }
     }
   } else if (request.action === 'testLog' || request.action === 'addLog') {
     // 接收来自content-script的日志
     addLog(request.message, request.type);
   } else if (request.action === 'testCompleted' || request.action === 'testComplete') {
-    // 测试完成
+    // 测试完成 - 关闭加载提示
+    hideGlobalLoading();
+
     testingInProgress = false;
     startTestBtn.disabled = false;
     startIntelligentTestBtn.disabled = false;
@@ -1277,7 +1420,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const reportLabel = document.getElementById('reportBtnLabel');
     if (reportIcon) reportIcon.textContent = '📊';
     if (reportLabel) reportLabel.textContent = '查看报告';
-    
+
     // 修改主界面按钮文案为“再次测试”
     try {
       startTestBtn.innerHTML = '<span class="icon">🔄</span> 再次测试';

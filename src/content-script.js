@@ -305,38 +305,167 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: false, error: e.message });
     }
   } else if (request.action === 'analyzePageForIntent') {
-    // 分析页面功能以生成测试意图建议
-    console.log('[Web测试工具] 分析页面功能以生成测试意图...');
+    // 分析页面功能以生成更全面的测试意图建议（增强版）
+    console.log('[Web测试工具] 分析页面功能以生成测试意图（增强版）...');
     try {
+      // 收集表单详细信息
+      const forms = Array.from(document.querySelectorAll('form')).map(f => {
+        const fields = Array.from(f.querySelectorAll('input, select, textarea')).map(el => ({
+          tag: el.tagName.toLowerCase(),
+          type: el.type || (el.tagName.toLowerCase() === 'select' ? 'select' : 'text'),
+          name: el.name || '',
+          id: el.id || '',
+          placeholder: el.placeholder || '',
+          required: !!el.required,
+          pattern: el.getAttribute('pattern') || null,
+          min: el.getAttribute('min') || null,
+          max: el.getAttribute('max') || null,
+          minlength: el.getAttribute('minlength') || null,
+          maxlength: el.getAttribute('maxlength') || null,
+          datasetKeys: Object.keys(el.dataset || {}),
+          hasValidationMessage: !!(el.getAttribute('aria-invalid') || el.getAttribute('aria-describedby'))
+        }));
+        const submitButtons = Array.from(f.querySelectorAll('button[type="submit"], input[type="submit"], .submit, [class*="submit"], [class*="confirm"]')).map(b => ({
+          text: (b.textContent || b.value || '').trim().slice(0, 50),
+          aria: b.getAttribute('aria-label') || ''
+        }));
+        return {
+          id: f.id || '',
+          name: f.name || '',
+          action: f.getAttribute('action') || '',
+          method: (f.getAttribute('method') || 'GET').toUpperCase(),
+          fieldCount: fields.length,
+          requiredCount: fields.filter(x => x.required).length,
+          hasFileUpload: fields.some(x => x.type === 'file'),
+          hasPassword: fields.some(x => x.type === 'password'),
+          fields,
+          submitButtons
+        };
+      });
+
+      // 收集按钮、链接、表格详情
+      const buttons = Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"], [role="button"], a[role="button"]')).map(el => ({
+        text: (el.textContent || el.value || '').trim().slice(0, 60),
+        tag: el.tagName.toLowerCase(),
+        type: (el.getAttribute('type') || '').toLowerCase(),
+        aria: el.getAttribute('aria-label') || '',
+        hasOnClick: !!el.getAttribute('onclick')
+      }));
+
+      const links = Array.from(document.querySelectorAll('a[href]')).map(a => ({
+        text: (a.textContent || '').trim().slice(0, 60),
+        href: a.href,
+        sameDomain: (() => {
+          try { return new URL(a.href).hostname === window.location.hostname; } catch { return false; }
+        })(),
+        target: a.getAttribute('target') || ''
+      }));
+
+      const tables = Array.from(document.querySelectorAll('table')).map(t => ({
+        id: t.id || '',
+        rowCount: t.querySelectorAll('tbody tr').length || t.querySelectorAll('tr').length,
+        hasPagination: !!document.querySelector('.pagination, .ant-pagination, .el-pagination'),
+        hasSortable: !!t.querySelector('[class*="sort"], th[aria-sort]'),
+        hasSearch: !!document.querySelector('input[type="search"], .table-search, [class*="search"]')
+      }));
+
+      // 组件与UI结构
+      const uiComponents = {
+        selects: Array.from(document.querySelectorAll('select, .el-select, .ant-select, .n-select')).length,
+        datePickers: Array.from(document.querySelectorAll('.el-date-picker, .el-datetime-picker, .ant-picker, .n-date-picker')).length,
+        cascaders: Array.from(document.querySelectorAll('.el-cascader, .ant-cascader')).length,
+        checkboxes: Array.from(document.querySelectorAll('input[type="checkbox"], .el-checkbox, .ant-checkbox-wrapper')).length,
+        radios: Array.from(document.querySelectorAll('input[type="radio"], .el-radio, .ant-radio-wrapper')).length,
+        switches: Array.from(document.querySelectorAll('.el-switch, .ant-switch')).length,
+        tabs: Array.from(document.querySelectorAll('.ant-tabs, .el-tabs, [role="tablist"], [class*="tabs"]')).length,
+        accordions: Array.from(document.querySelectorAll('.accordion, [class*="collapse"], [role="tree"]')).length,
+        modals: Array.from(document.querySelectorAll('.modal.show, .ant-modal, .el-dialog, [role="dialog"], [role="alertdialog"]')).length
+      };
+
+      // 可访问性与结构
+      const headings = {
+        h1: document.querySelectorAll('h1').length,
+        h2: document.querySelectorAll('h2').length,
+        h3: document.querySelectorAll('h3').length
+      };
+      const accessibility = {
+        ariaElements: Array.from(document.querySelectorAll('*')).filter(el => {
+          return Array.from(el.attributes).some(attr => attr.name.startsWith('aria-'));
+        }).length,
+        imagesWithoutAlt: Array.from(document.querySelectorAll('img')).filter(img => !img.alt).length,
+        labelsMissingForInputs: Array.from(document.querySelectorAll('input, select, textarea'))
+          .filter(el => {
+            const id = el.id;
+            if (!id) return true;
+            return !document.querySelector(`label[for="${id}"]`);
+          }).length
+      };
+
+      // 媒体/图表与iframe
+      const charts = {
+        canvasCount: document.querySelectorAll('canvas').length,
+        chartJsDetected: typeof window.Chart !== 'undefined'
+      };
+      const iframes = Array.from(document.querySelectorAll('iframe')).map(i => ({ src: i.src || '' }));
+
+      // 框架/SPA特征
+      const frameworks = {
+        react: !!document.querySelector('[data-reactroot], [data-reactid]'),
+        vue: !!document.querySelector('[class*="v-"], [data-v-]'),
+        angular: !!document.querySelector('[ng-version]')
+      };
+
+      // 登录/注册与上传特征
+      const hasAuthFlow = forms.some(f => f.hasPassword) || !!document.querySelector('input[type="password"]');
+      const hasFileUpload = forms.some(f => f.hasFileUpload) || !!document.querySelector('input[type="file"]');
+
+      const bodyText = document.body.innerText ? document.body.innerText.substring(0, 400) : '';
+      const metadata = {
+        keywords: document.querySelector('meta[name="keywords"]')?.content || '',
+        description: document.querySelector('meta[name="description"]')?.content || ''
+      };
+
       const pageAnalysis = {
         title: document.title,
         url: window.location.href,
-        forms: Array.from(document.querySelectorAll('form')).map(f => ({
-          id: f.id,
-          name: f.name,
-          fields: Array.from(f.querySelectorAll('input, select, textarea')).length
-        })),
-        buttons: Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"]')).length,
-        links: Array.from(document.querySelectorAll('a[href]')).length,
-        tables: Array.from(document.querySelectorAll('table')).length,
+        forms,
+        buttons,
+        links,
+        tables,
+        uiComponents,
         inputs: Array.from(document.querySelectorAll('input')).length,
         selects: Array.from(document.querySelectorAll('select')).length,
         textareas: Array.from(document.querySelectorAll('textarea')).length,
-        headings: {
-          h1: document.querySelectorAll('h1').length,
-          h2: document.querySelectorAll('h2').length,
-          h3: document.querySelectorAll('h3').length
-        },
-        bodyText: document.body.innerText ? document.body.innerText.substring(0, 500) : '',
-        metadata: {
-          keywords: document.querySelector('meta[name="keywords"]')?.content || '',
-          description: document.querySelector('meta[name="description"]')?.content || ''
-        }
+        headings,
+        accessibility,
+        charts,
+        iframes,
+        frameworks,
+        hasAuthFlow,
+        hasFileUpload,
+        bodyText,
+        metadata
       };
+
+      // 生成高质量意图摘要
+      const intentSuggestionParts = [];
+      if (forms.length) intentSuggestionParts.push(`测试${forms.length}个表单（必填${forms.reduce((a, b) => a + b.requiredCount, 0)}项，含校验与提交）`);
+      if (buttons.length) intentSuggestionParts.push(`验证${buttons.length}个按钮交互与弹框处理`);
+      if (links.length) intentSuggestionParts.push(`测试${links.length}个链接的同域跳转与导航`);
+      if (tables.length) intentSuggestionParts.push(`检查${tables.length}个表格的分页/排序/搜索与数据渲染`);
+      const compTotal = Object.values(uiComponents).reduce((a, b) => a + b, 0);
+      if (compTotal) intentSuggestionParts.push(`覆盖选择器/日期/级联/复选/单选/开关、标签页/折叠面板`);
+      if (charts.canvasCount) intentSuggestionParts.push('验证图表渲染与画布存在');
+      if (iframes.length) intentSuggestionParts.push(`处理${iframes.length}个iframe嵌入内容`);
+      if (hasAuthFlow) intentSuggestionParts.push('校验登录/注册相关流程与错误提示');
+      if (hasFileUpload) intentSuggestionParts.push('测试文件上传与大小/类型校验');
+      intentSuggestionParts.push('校验页面导航与接口响应、可访问性（alt/label/ARIA）');
+      const intentSuggestion = intentSuggestionParts.join('，').replace(/，$/, '');
 
       sendResponse({
         success: true,
-        pageAnalysis: pageAnalysis
+        pageAnalysis,
+        intentSuggestion
       });
     } catch (error) {
       console.error('[Web测试工具] 页面分析失败:', error);
@@ -524,6 +653,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     testActive = true;
     notifyPopup('addLog', '▶ 测试已继续', 'info');
     sendResponse({ success: true });
+  } else if (request.action === 'testQwenConnection') {
+    // 测试 Qwen API 连接
+    (async () => {
+      try {
+        const providedKey = request.apiKey && String(request.apiKey).trim();
+        const storedKey = await new Promise(resolve => chrome.storage.local.get(['qwenApiKey'], r => resolve(r.qwenApiKey || '')));
+        const apiKey = providedKey || storedKey;
+        if (!apiKey) {
+          sendResponse({ success: false, message: '未配置API密钥' });
+          return;
+        }
+        if (typeof QwenIntegration === 'undefined') {
+          sendResponse({ success: false, message: 'QwenIntegration 未加载' });
+          return;
+        }
+        const qwen = new QwenIntegration(apiKey);
+        const result = await qwen.request([{ role: 'user', content: '你好，请返回一个短句用于连通性测试。' }], { temperature: 0.1, maxTokens: 50 });
+        if (result && typeof result === 'string' && result.length > 0) {
+          sendResponse({ success: true, message: '连接成功', sample: result.slice(0, 60) });
+        } else {
+          sendResponse({ success: false, message: '连接失败或响应为空' });
+        }
+      } catch (e) {
+        sendResponse({ success: false, message: e.message || '连接异常' });
+      }
+    })();
+    return true;
   }
 
   return true; // 保持消息通道开启，支持异步响应
