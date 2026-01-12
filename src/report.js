@@ -483,7 +483,23 @@ function renderElementApiMapping () {
 function renderReport () {
   if (!testData) return;
 
-  const { stats, apiRequests, elements, timestamp, duration, apiStats, elementTypes, pageInfo } = testData;
+  let { stats, apiRequests, elements, timestamp, duration, apiStats, elementTypes, pageInfo } = testData;
+
+  // 确保stats对象存在
+  if (!stats) {
+    stats = {
+      testedCount: 0,
+      successCount: 0,
+      failureCount: 0,
+      apiErrorCount: 0,
+      successRate: 0
+    };
+  }
+
+  // 确保apiRequests是数组
+  if (!apiRequests) apiRequests = [];
+  if (!elements) elements = [];
+  if (!apiStats) apiStats = { total: 0, success: 0, clientError: 0, serverError: 0, failed: 0 };
 
   // 更新基本信息
   document.getElementById('testUrl').textContent = testData.url || '-';
@@ -559,7 +575,11 @@ function renderPieChart (elements) {
   let success = 0;
   let failed = 0;
 
-  if (Array.isArray(elements)) {
+  if (!Array.isArray(elements)) {
+    elements = [];
+  }
+
+  if (Array.isArray(elements) && elements.length > 0) {
     elements.forEach(el => {
       // 兼容多种字段名：success, status, result, passed
       const elSuccess = el.success || el.status === 'success' || el.passed || el.result === true;
@@ -587,43 +607,57 @@ function renderPieChart (elements) {
   const total = success + failed;
 
   try {
-    new Chart(ctx.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: ['成功', '失败'],
-        datasets: [{
-          data: [success, failed],
-          backgroundColor: ['#4CAF50', '#f44336'],
-          borderColor: ['#45a049', '#da190b'],
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              font: { size: 14 },
-              padding: 20
-            }
+    // 延迟一帧确保容器已渲染
+    setTimeout(() => {
+      const ctx2d = ctx.getContext('2d');
+      if (!ctx2d) {
+        console.error('[报告] 无法获取canvas 2d context');
+        return;
+      }
+      try {
+        new Chart(ctx2d, {
+          type: 'doughnut',
+          data: {
+            labels: ['成功', '失败'],
+            datasets: [{
+              data: [success, failed],
+              backgroundColor: ['#4CAF50', '#f44336'],
+              borderColor: ['#45a049', '#da190b'],
+              borderWidth: 2
+            }]
           },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                const label = context.label || '';
-                const value = context.parsed || 0;
-                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                return `${label}: ${value} (${percentage}%)`;
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  font: { size: 14 },
+                  padding: 20
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const label = context.label || '';
+                    const value = context.parsed || 0;
+                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                    return `${label}: ${value} (${percentage}%)`;
+                  }
+                }
               }
             }
           }
-        }
+        });
+      } catch (innerErr) {
+        console.error('[报告] Chart.js初始化失败:', innerErr);
+        ctx.parentElement.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">图表渲染失败</p>';
       }
-    });
+    }, 100);
   } catch (error) {
     console.error('[报告] 饼图渲染失败:', error.message || String(error));
+    ctx.parentElement.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">数据加载中...</p>';
   }
 }
 
@@ -662,44 +696,61 @@ function renderBarChart (elements) {
   const colors = ['#667eea', '#764ba2', '#f44336', '#4CAF50', '#ff9800', '#2196F3', '#009688'];
 
   try {
-    new Chart(ctx.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: '元素数量',
-          data: data,
-          backgroundColor: colors.slice(0, labels.length),
-          borderColor: colors.slice(0, labels.length),
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1
+    setTimeout(() => {
+      const ctx2d = ctx.getContext('2d');
+      if (!ctx2d) {
+        console.error('[报告] 无法获取canvas 2d context');
+        return;
+      }
+      try {
+        new Chart(ctx2d, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '元素数量',
+              data: data,
+              backgroundColor: colors.slice(0, labels.length),
+              borderColor: colors.slice(0, labels.length),
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
             }
           }
-        }
+        });
+      } catch (innerErr) {
+        console.error('[报告] Chart.js初始化失败:', innerErr);
+        ctx.parentElement.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">图表渲染失败</p>';
       }
-    });
+    }, 100);
   } catch (error) {
     console.error('[报告] 柱状图渲染失败:', error.message || String(error));
+    ctx.parentElement.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">数据加载中...</p>';
   }
 }
 
 // 渲染API统计
 function renderAPIStats (apiRequests) {
   let total2xx = 0, total3xx = 0, total4xx = 0, total5xx = 0;
+
+  if (!apiRequests || !Array.isArray(apiRequests)) {
+    apiRequests = [];
+  }
 
   apiRequests.forEach(req => {
     if (req.status) {

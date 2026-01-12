@@ -160,6 +160,23 @@
         >
           ⚙️ Qwen设置
         </button>
+        <button
+          id="openTestSettingsBtn"
+          style="
+            position: absolute;
+            top: 15px;
+            right: 110px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 12px;
+          "
+        >
+          📊 测试设置
+        </button>
       </div>
 
       <div class="content">
@@ -171,6 +188,18 @@
 
         <!-- 标签页 1: 自动分析 -->
         <div id="manual-tab" class="tab-content active">
+          <!-- 测试用例报告下载按钮 -->
+          <div style="margin-bottom: 12px">
+            <button
+              id="downloadTestCaseReportBtn"
+              class="btn btn-info"
+              disabled
+              style="width: 100%"
+            >
+              <span class="icon">📥</span> 下载测试用例报告
+            </button>
+          </div>
+
           <div class="input-section">
             <label for="urlInput">目标网址：</label>
             <input
@@ -182,83 +211,48 @@
           </div>
 
           <div class="input-section" style="margin-top: 10px">
-            <label for="testIntentInput">智能测试意图（可选）：</label>
-            <textarea
-              id="testIntentInput"
-              rows="2"
-              placeholder="例如：测试电商网站的完整购物流程"
-            ></textarea>
-            <small style="color: #777"
-              >填写后可使用AI理解意图生成测试计划并推荐配置</small
+            <div
+              style="
+                background: #f0f9ff;
+                border-left: 4px solid #0066cc;
+                padding: 12px;
+                border-radius: 8px;
+              "
             >
-          </div>
-
-          <div class="config-section">
-            <h3>测试配置</h3>
-            <div class="config-grid">
-              <label>
-                <input type="checkbox" id="testInteraction" checked />
-                测试交互按钮
-              </label>
-              <label>
-                <input type="checkbox" id="monitorAPI" checked />
-                监控API请求
-              </label>
-              <label>
-                <input type="checkbox" id="captureScreenshot" checked />
-                捕获截图
-              </label>
-              <label>
-                <input type="checkbox" id="captureConsole" checked />
-                捕获控制台日志
-              </label>
-              <label>
-                <input type="checkbox" id="testForms" checked />
-                测试表单输入
-              </label>
-              <label>
-                <input type="checkbox" id="testLinks" checked />
-                测试链接跳转
-              </label>
+              <div style="font-weight: 700; color: #0066cc; margin-bottom: 6px">
+                智能测试助手 🤖
+              </div>
+              <label
+                for="testIntentInput"
+                style="display: block; color: #555; margin-bottom: 6px"
+                >告诉AI你想测试什么：</label
+              >
+              <textarea
+                id="testIntentInput"
+                rows="4"
+                placeholder="例如：测试用户注册与登录、商品加购到结算、完整管理后台基本功能"
+                style="
+                  width: 100%;
+                  resize: vertical;
+                  min-height: 80px;
+                  padding: 10px;
+                  border: 1px solid #dfe3e8;
+                  border-radius: 6px;
+                  box-sizing: border-box;
+                "
+              ></textarea>
+              <div style="margin-top: 8px; color: #666; font-size: 12px">
+                <div style="margin-bottom: 4px">💡 例如：</div>
+                <ul style="margin: 0; padding-left: 18px">
+                  <li>测试用户注册和登录流程</li>
+                  <li>测试商品加购与结算功能</li>
+                  <li>全面测试一个管理后台的基础操作</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div class="advanced-section">
-            <h3>高级设置</h3>
-            <div class="setting-item">
-              <label for="delayInput">测试间隔（毫秒）：</label>
-              <input
-                type="number"
-                id="delayInput"
-                value="1200"
-                min="100"
-                max="5000"
-                step="100"
-              />
-            </div>
-            <div class="setting-item">
-              <label for="maxElements">最大测试元素数：</label>
-              <input
-                type="number"
-                id="maxElements"
-                value="100"
-                min="10"
-                max="500"
-                step="10"
-              />
-            </div>
-            <div class="setting-item">
-              <label for="timeoutInput">页面超时（秒）：</label>
-              <input
-                type="number"
-                id="timeoutInput"
-                value="30"
-                min="5"
-                max="120"
-                step="5"
-              />
-            </div>
-          </div>
+          <!-- 测试配置与高级设置已移至弹窗，不在主界面显示 -->
         </div>
 
         <!-- 标签页 2: 自定义测试 -->
@@ -323,21 +317,23 @@
 
         <!-- 共享的操作按钮 -->
         <div class="action-section">
-          <button id="startTestBtn" class="btn btn-primary">
-            <span class="icon">▶</span> 开始测试
+          <button id="startIntelligentTestBtn" class="btn btn-primary">
+            <span class="icon" id="intelligentTestIcon">🎯</span>
+            <span id="intelligentTestLabel">让AI智能分析</span>
           </button>
           <button
-            id="startIntelligentTestBtn"
-            class="btn btn-primary"
+            id="startTestBtn"
+            class="btn btn-secondary"
             style="margin-left: 8px"
           >
-            <span class="icon">🤖</span> 开始智能测试
+            <span class="icon">⚙️</span> 使用快速模式
           </button>
           <button id="stopTestBtn" class="btn btn-secondary" disabled>
             <span class="icon">⏹</span> 停止测试
           </button>
           <button id="viewReportBtn" class="btn btn-info" disabled>
-            <span class="icon">📊</span> 查看报告
+            <span class="icon" id="reportBtnIcon">📊</span>
+            <span id="reportBtnLabel">查看报告</span>
           </button>
         </div>
 
@@ -520,6 +516,163 @@
               "
             ></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 测试设置弹窗 -->
+    <div
+      id="testSettingsModal"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div
+        style="
+          background: white;
+          border-radius: 10px;
+          padding: 24px;
+          width: 92%;
+          max-width: 560px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+          "
+        >
+          <h2 style="margin: 0; color: #333">📊 测试设置</h2>
+          <button
+            id="closeTestSettingsModal"
+            style="
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: #999;
+            "
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="config-section" style="margin-top: 8px">
+          <h3 style="margin: 8px 0">测试配置</h3>
+          <div
+            class="config-grid"
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px"
+          >
+            <label
+              ><input type="checkbox" id="testInteraction" checked />
+              测试交互按钮</label
+            >
+            <label
+              ><input type="checkbox" id="monitorAPI" checked />
+              监控API请求</label
+            >
+            <label
+              ><input type="checkbox" id="captureScreenshot" checked />
+              捕获截图</label
+            >
+            <label
+              ><input type="checkbox" id="captureConsole" checked />
+              捕获控制台日志</label
+            >
+            <label
+              ><input type="checkbox" id="testForms" checked />
+              测试表单输入</label
+            >
+            <label
+              ><input type="checkbox" id="testLinks" checked />
+              测试链接跳转</label
+            >
+          </div>
+        </div>
+
+        <div class="advanced-section" style="margin-top: 14px">
+          <h3 style="margin: 8px 0">高级设置</h3>
+          <div class="setting-item" style="margin-top: 8px">
+            <label for="delayInput">测试间隔（毫秒）：</label>
+            <input
+              type="number"
+              id="delayInput"
+              value="1200"
+              min="100"
+              max="5000"
+              step="100"
+            />
+          </div>
+          <div class="setting-item" style="margin-top: 8px">
+            <label for="maxElements">最大测试元素数：</label>
+            <input
+              type="number"
+              id="maxElements"
+              value="100"
+              min="10"
+              max="500"
+              step="10"
+            />
+          </div>
+          <div class="setting-item" style="margin-top: 8px">
+            <label for="timeoutInput">页面超时（秒）：</label>
+            <input
+              type="number"
+              id="timeoutInput"
+              value="30"
+              min="5"
+              max="120"
+              step="5"
+            />
+          </div>
+        </div>
+
+        <div
+          style="
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 16px;
+          "
+        >
+          <button
+            id="saveTestSettingsBtn"
+            style="
+              background: #667eea;
+              color: white;
+              border: none;
+              padding: 10px 16px;
+              border-radius: 6px;
+              cursor: pointer;
+            "
+          >
+            💾 保存配置
+          </button>
+          <button
+            id="closeTestSettingsBtn"
+            style="
+              background: #f5f5f5;
+              color: #333;
+              border: 1px solid #ddd;
+              padding: 10px 16px;
+              border-radius: 6px;
+              cursor: pointer;
+            "
+          >
+            关闭
+          </button>
         </div>
       </div>
     </div>

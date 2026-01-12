@@ -304,6 +304,48 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } catch (e) {
       sendResponse({ success: false, error: e.message });
     }
+  } else if (request.action === 'analyzePageForIntent') {
+    // 分析页面功能以生成测试意图建议
+    console.log('[Web测试工具] 分析页面功能以生成测试意图...');
+    try {
+      const pageAnalysis = {
+        title: document.title,
+        url: window.location.href,
+        forms: Array.from(document.querySelectorAll('form')).map(f => ({
+          id: f.id,
+          name: f.name,
+          fields: Array.from(f.querySelectorAll('input, select, textarea')).length
+        })),
+        buttons: Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"]')).length,
+        links: Array.from(document.querySelectorAll('a[href]')).length,
+        tables: Array.from(document.querySelectorAll('table')).length,
+        inputs: Array.from(document.querySelectorAll('input')).length,
+        selects: Array.from(document.querySelectorAll('select')).length,
+        textareas: Array.from(document.querySelectorAll('textarea')).length,
+        headings: {
+          h1: document.querySelectorAll('h1').length,
+          h2: document.querySelectorAll('h2').length,
+          h3: document.querySelectorAll('h3').length
+        },
+        bodyText: document.body.innerText ? document.body.innerText.substring(0, 500) : '',
+        metadata: {
+          keywords: document.querySelector('meta[name="keywords"]')?.content || '',
+          description: document.querySelector('meta[name="description"]')?.content || ''
+        }
+      };
+
+      sendResponse({
+        success: true,
+        pageAnalysis: pageAnalysis
+      });
+    } catch (error) {
+      console.error('[Web测试工具] 页面分析失败:', error);
+      sendResponse({
+        success: false,
+        error: error.message
+      });
+    }
+
   } else if (request.action === 'analyzePageStructure') {
     // 🆕 分析页面结构，提取所有可交互元素
     console.log('[Web测试工具] 开始分析页面结构...');
@@ -378,16 +420,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           summary: `forms:${document.querySelectorAll('form').length}, buttons:${document.querySelectorAll('button').length}, links:${document.querySelectorAll('a[href]').length}`
         };
 
+        // 如果AI引擎不可用，返回空计划（允许快速测试继续）
         if (!window.aiIntentEngine) {
-          throw new Error('AIIntentEngine 未初始化');
+          console.warn('[Web测试工具] AIIntentEngine 未初始化，返回默认计划');
+          sendResponse({
+            success: true,
+            plan: {
+              intentAnalysis: { userGoal: request.userIntent, testScope: '自动化功能测试' },
+              testStrategy: { testAreas: [] },
+              recommendedConfig: { testButtons: true, testForms: true, testLinks: true }
+            }
+          });
+          return;
         }
 
         const plan = await window.aiIntentEngine.understandIntent(request.userIntent || '自动化测试', pageContext);
         sendResponse({ success: true, plan });
       } catch (error) {
+        console.error('[Web测试工具] startIntelligentTest 错误:', error);
         sendResponse({ success: false, error: error.message || String(error) });
       }
     })();
+    return true;
     return true; // 异步响应
   } else if (request.action === 'executeCustomTestCases') {
     // 🆕 执行自定义测试用例

@@ -20,6 +20,15 @@ const startIntelligentTestBtn = document.getElementById('startIntelligentTestBtn
 const stopTestBtn = document.getElementById('stopTestBtn');
 const viewReportBtn = document.getElementById('viewReportBtn');
 const settingsBtn = document.getElementById('settingsBtn');
+// 新增：测试设置弹窗相关元素
+const openTestSettingsBtn = document.getElementById('openTestSettingsBtn');
+const testSettingsModal = document.getElementById('testSettingsModal');
+const closeTestSettingsModal = document.getElementById('closeTestSettingsModal');
+const closeTestSettingsBtn = document.getElementById('closeTestSettingsBtn');
+const saveTestSettingsBtn = document.getElementById('saveTestSettingsBtn');
+// 新增：测试用例报告下载按钮
+const downloadTestCaseReportBtn = document.getElementById('downloadTestCaseReportBtn');
+
 const statusSection = document.getElementById('statusSection');
 let logContainer = document.getElementById('logContainer');
 let testedCount = document.getElementById('testedCount');
@@ -88,9 +97,9 @@ tabBtns.forEach(btn => {
     // 根据标签页改变测试模式
     testingMode = tab === 'manual' ? 'auto' : 'custom';
 
-    // 更新开始按钮文本
+    // 更新开始按钮文本（统一为快速模式/自定义执行）
     if (testingMode === 'auto') {
-      startTestBtn.innerHTML = '<span class="icon">▶</span> 开始测试';
+      startTestBtn.innerHTML = '<span class="icon">⚙️</span> 使用快速模式';
     } else {
       startTestBtn.innerHTML = uploadedTestCases ? '<span class="icon">▶</span> 执行测试' : '<span class="icon">▶</span> 开始测试';
     }
@@ -437,7 +446,7 @@ async function initializeQwen () {
 
 startTestBtn.addEventListener('click', async () => {
   if (testingMode === 'auto') {
-    // 自动分析模式
+    // 快速模式：直接按当前配置启动自动测试
     startAutoTest();
   } else {
     // 自定义测试模式
@@ -452,70 +461,184 @@ startTestBtn.addEventListener('click', async () => {
 // 智能测试入口
 startIntelligentTestBtn.addEventListener('click', async () => {
   const url = urlInput.value.trim();
-  const intent = (testIntentInput?.value || '').trim();
+  let intent = (testIntentInput?.value || '').trim();
+  
   if (!url) {
     alert('❌ 请输入目标网址');
     return;
   }
+  
+  // 如果没有意图，先进行页面分析
   if (!intent) {
-    alert('⚠️ 请填写智能测试意图，以便AI生成计划');
-    return;
+    addLog('🔍 正在分析页面功能...', 'info');
+    
+    try {
+      chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+        const activeTab = tabs[0];
+        let targetTab = activeTab;
+        
+        // 检查是否需要打开新标签页
+        if (!activeTab.url || !activeTab.url.startsWith(url)) {
+          targetTab = await new Promise((resolve) => {
+            chrome.tabs.create({ url }, (tab) => resolve(tab));
+          });
+          await waitForPageReady(targetTab.id, url, 15000);
+          await ensureContentScriptReady(targetTab.id);
+        }
+
+        // 发送分析页面命令
+        chrome.tabs.sendMessage(targetTab.id, { 
+          action: 'analyzePageForIntent',
+          url: url
+        }).then((resp) => {
+          if (resp && resp.success && resp.pageAnalysis) {
+            // 生成自动化的测试意图建议
+            const analysis = resp.pageAnalysis;
+            let suggestion = '';
+            
+            // 基于页面分析生成建议
+            if (analysis.forms && analysis.forms.length > 0) {
+              suggestion += `测试${analysis.forms.length}个表单的填写和提交流程，`;
+            }
+            if (analysis.buttons && analysis.buttons.length > 0) {
+              suggestion += `验证${analysis.buttons.length}个按钮的交互功能，`;
+            }
+            if (analysis.links && analysis.links.length > 0) {
+              suggestion += `测试${analysis.links.length}个链接的跳转，`;
+            }
+            if (analysis.tables && analysis.tables.length > 0) {
+              suggestion += `检查${analysis.tables.length}个数据表格的显示，`;
+            }
+            
+            // 如果没有生成建议，使用通用建议
+            if (!suggestion) {
+              suggestion = '进行完整的页面功能测试，包括所有交互元素和页面导航';
+            }
+            
+            // 移除末尾的逗号
+            suggestion = suggestion.replace(/，$/, '');
+            
+            // 填入testIntentInput
+            if (testIntentInput) {
+              testIntentInput.value = suggestion;
+              testIntentInput.focus();
+              testIntentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              addLog('✓ AI已自动分析页面并生成测试建议，您可以修改后继续点击按钮开始测试', 'success');
+            }
+          } else {
+            addLog('⚠️ 页面分析失败，请手动填写测试意图', 'warning');
+          }
+        }).catch((error) => {
+          addLog('⚠️ 页面分析出错，请手动填写测试意图', 'warning');
+          console.error('[Popup] 页面分析错误:', error);
+        });
+      });
+      return;
+    } catch (error) {
+      addLog('⚠️ 自动分析失败，请手动填写测试意图', 'warning');
+      console.error('[Popup] 自动分析异常:', error);
+      return;
+    }
   }
 
-  // 先打开/定位到目标页
-  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-    const activeTab = tabs[0];
-    let targetTab = activeTab;
-    if (!activeTab.url || !activeTab.url.startsWith(url)) {
-      addLog('正在打开目标页面用于智能分析...', 'info');
-      targetTab = await new Promise((resolve) => {
-        chrome.tabs.create({ url }, (tab) => resolve(tab));
-      });
-      await waitForPageReady(targetTab.id, url, 15000);
-      await ensureContentScriptReady(targetTab.id);
-    }
+  try {
+    // 设置按钮为Loading状态
+    startIntelligentTestBtn.disabled = true;
+    const icon = document.getElementById('intelligentTestIcon');
+    const label = document.getElementById('intelligentTestLabel');
+    if (icon) icon.textContent = '⏳';
+    if (label) label.textContent = '正在分析中...';
 
-    addLog('🤖 正在理解测试意图并生成计划...', 'info');
-    chrome.tabs.sendMessage(targetTab.id, { action: 'startIntelligentTest', userIntent: intent }).then((resp) => {
-      if (resp && resp.success) {
-        const plan = resp.plan || {};
-        // 展示计划
-        if (aiPlanContainer) {
-          aiPlanContainer.style.display = 'block';
-          aiPlanContainer.innerHTML = renderAIPlan(plan);
+    // 先打开/定位到目标页
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      try {
+        const activeTab = tabs[0];
+        let targetTab = activeTab;
+        if (!activeTab.url || !activeTab.url.startsWith(url)) {
+          addLog('正在打开目标页面用于智能分析...', 'info');
+          targetTab = await new Promise((resolve) => {
+            chrome.tabs.create({ url }, (tab) => resolve(tab));
+          });
+          await waitForPageReady(targetTab.id, url, 15000);
+          await ensureContentScriptReady(targetTab.id);
         }
-        addLog('✓ AI计划生成完成，即将按推荐配置启动测试', 'success');
 
-        // 保存AI计划以供报告页展示
-        chrome.storage.local.set({ aiPlan: plan });
+        addLog('🤖 正在理解测试意图并生成计划...', 'info');
+        chrome.tabs.sendMessage(targetTab.id, { action: 'startIntelligentTest', userIntent: intent }).then((resp) => {
+          if (resp && resp.success) {
+            const plan = resp.plan || {};
+            // 展示计划
+            if (aiPlanContainer) {
+              aiPlanContainer.style.display = 'block';
+              aiPlanContainer.innerHTML = renderAIPlan(plan);
+            }
+            addLog('✓ AI计划生成完成，即将按推荐配置启动测试', 'success');
 
-        // 将推荐配置映射到现有配置
-        const rc = plan.recommendedConfig || {};
-        const config = {
-          testInteraction: rc.testButtons !== false,
-          monitorAPI: true,
-          captureScreenshot: captureScreenshot.checked,
-          captureConsole: captureConsole.checked,
-          testForms: rc.testForms !== false,
-          testLinks: rc.testLinks !== false,
-          delay: parseInt(rc.delay || delayInput.value) || 1200,
-          maxElements: parseInt(rc.maxElements || maxElements.value) || 100,
-          timeout: parseInt(rc.timeout || timeoutInput.value) || 30
-        };
+            // 更新下载测试用例报告按钮为"正在生成用例中"
+            if (downloadTestCaseReportBtn) {
+              downloadTestCaseReportBtn.disabled = false;
+              downloadTestCaseReportBtn.innerHTML = '<span class="icon">⏳</span> 正在生成用例中...';
+              chrome.storage.local.set({ aiTestCasePlan: plan });
+            }
 
-        // 保存与启动常规流程
-        chrome.storage.local.set({ savedConfig: config });
-        urlInput.value = url; // 保持一致
+            // 保存AI计划以供报告页展示
+            chrome.storage.local.set({ aiPlan: plan });
 
-        // 复用现有自动测试启动
-        startAutoTest();
-      } else {
-        addLog('❌ AI意图理解失败: ' + (resp?.error || '未知错误'), 'error');
+            // 将推荐配置映射到现有配置
+            const rc = plan.recommendedConfig || {};
+            const config = {
+              testInteraction: rc.testButtons !== false,
+              monitorAPI: true,
+              captureScreenshot: captureScreenshot.checked,
+              captureConsole: captureConsole.checked,
+              testForms: rc.testForms !== false,
+              testLinks: rc.testLinks !== false,
+              delay: parseInt(rc.delay || delayInput.value) || 1200,
+              maxElements: parseInt(rc.maxElements || maxElements.value) || 100,
+              timeout: parseInt(rc.timeout || timeoutInput.value) || 30
+            };
+
+            // 保存与启动常规流程
+            chrome.storage.local.set({ savedConfig: config });
+            urlInput.value = url; // 保持一致
+
+            // 复用现有自动测试启动
+            startAutoTest();
+          } else {
+            addLog('❌ AI意图理解失败: ' + (resp?.error || '未知错误'), 'error');
+            // 恢复按钮状态
+            startIntelligentTestBtn.disabled = false;
+            if (icon) icon.textContent = '🎯';
+            if (label) label.textContent = '让AI智能分析';
+          }
+        }).catch((error) => {
+          addLog('❌ 智能测试入口失败: ' + error.message, 'error');
+          // 恢复按钮状态
+          startIntelligentTestBtn.disabled = false;
+          if (icon) icon.textContent = '🎯';
+          if (label) label.textContent = '让AI智能分析';
+        });
+      } catch (innerError) {
+        console.error('[Popup] 智能测试内部错误:', innerError);
+        addLog('❌ 智能分析执行出错: ' + innerError.message, 'error');
+        // 恢复按钮状态
+        startIntelligentTestBtn.disabled = false;
+        const icon = document.getElementById('intelligentTestIcon');
+        const label = document.getElementById('intelligentTestLabel');
+        if (icon) icon.textContent = '🎯';
+        if (label) label.textContent = '让AI智能分析';
       }
-    }).catch((error) => {
-      addLog('❌ 智能测试入口失败: ' + error.message, 'error');
     });
-  });
+  } catch (outerError) {
+    console.error('[Popup] 智能测试外部错误:', outerError);
+    addLog('❌ 智能测试启动失败: ' + outerError.message, 'error');
+    // 恢复按钮状态
+    startIntelligentTestBtn.disabled = false;
+    const icon = document.getElementById('intelligentTestIcon');
+    const label = document.getElementById('intelligentTestLabel');
+    if (icon) icon.textContent = '🎯';
+    if (label) label.textContent = '让AI智能分析';
+  }
 });
 
 function renderAIPlan (plan) {
@@ -564,7 +687,15 @@ async function startAutoTest () {
 
   testingInProgress = true;
   startTestBtn.disabled = true;
+  startIntelligentTestBtn.disabled = true;
   stopTestBtn.disabled = false;
+  // 测试过程中更新查看报告按钮为"正在生成报告中"提示
+  viewReportBtn.disabled = false;
+  const reportIcon = document.getElementById('reportBtnIcon');
+  const reportLabel = document.getElementById('reportBtnLabel');
+  if (reportIcon) reportIcon.textContent = '⏳';
+  if (reportLabel) reportLabel.textContent = '正在生成报告中...';
+  downloadTestCaseReportBtn.disabled = true;
   statusSection.style.display = 'block';
   statusSection.innerHTML = `
     <h3>测试状态</h3>
@@ -910,7 +1041,9 @@ stopTestBtn.addEventListener('click', () => {
 
   testingInProgress = false;
   startTestBtn.disabled = false;
+  startIntelligentTestBtn.disabled = false;
   stopTestBtn.disabled = true;
+  downloadTestCaseReportBtn.disabled = true;
   addLog('⏹️ 测试已停止', 'warning');
 
   chrome.storage.local.set({ testingState: { inProgress: false } });
@@ -923,6 +1056,66 @@ stopTestBtn.addEventListener('click', () => {
 viewReportBtn.addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('src/report.html') });
 });
+
+// 测试设置弹窗：打开/关闭/保存
+if (openTestSettingsBtn) {
+  openTestSettingsBtn.addEventListener('click', () => {
+    if (testSettingsModal) testSettingsModal.style.display = 'flex';
+  });
+}
+if (closeTestSettingsModal) {
+  closeTestSettingsModal.addEventListener('click', () => {
+    if (testSettingsModal) testSettingsModal.style.display = 'none';
+  });
+}
+if (closeTestSettingsBtn) {
+  closeTestSettingsBtn.addEventListener('click', () => {
+    if (testSettingsModal) testSettingsModal.style.display = 'none';
+  });
+}
+if (saveTestSettingsBtn) {
+  saveTestSettingsBtn.addEventListener('click', () => {
+    const config = {
+      testInteraction: testInteraction.checked,
+      monitorAPI: monitorAPI.checked,
+      captureScreenshot: captureScreenshot.checked,
+      captureConsole: captureConsole.checked,
+      testForms: testForms.checked,
+      testLinks: testLinks.checked,
+      delay: parseInt(delayInput.value) || 1200,
+      maxElements: parseInt(maxElements.value) || 100,
+      timeout: parseInt(timeoutInput.value) || 30
+    };
+    chrome.storage.local.set({ savedConfig: config }, () => {
+      addLog('✅ 测试配置已保存', 'success');
+      if (testSettingsModal) testSettingsModal.style.display = 'none';
+    });
+  });
+}
+
+// 下载测试用例报告
+if (downloadTestCaseReportBtn) {
+  downloadTestCaseReportBtn.addEventListener('click', () => {
+    chrome.storage.local.get(['aiTestCasePlan', 'aiPlan'], (result) => {
+      const plan = result.aiTestCasePlan || result.aiPlan || {};
+      if (!plan || Object.keys(plan).length === 0) {
+        alert('❌ 没有可下载的测试用例报告');
+        return;
+      }
+      const dataStr = JSON.stringify(plan, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ai-test-case-plan-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      addLog('✅ 测试用例报告已下载', 'success');
+    });
+  });
+}
 
 // =============================================
 // 设置按钮
@@ -1065,8 +1258,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 测试完成
     testingInProgress = false;
     startTestBtn.disabled = false;
+    startIntelligentTestBtn.disabled = false;
     stopTestBtn.disabled = true;
     viewReportBtn.disabled = false;
+
+    // 恢复"让AI智能分析"按钮状态
+    const iconEl = document.getElementById('intelligentTestIcon');
+    const labelEl = document.getElementById('intelligentTestLabel');
+    if (iconEl) iconEl.textContent = '🎯';
+    if (labelEl) labelEl.textContent = '让AI智能分析';
+
+    // 更新下载测试用例报告按钮为完成状态
+    if (downloadTestCaseReportBtn) {
+      downloadTestCaseReportBtn.innerHTML = '<span class="icon">📥</span> 下载测试用例报告';
+    }
+    // 恢复"查看报告"按钮状态
+    const reportIcon = document.getElementById('reportBtnIcon');
+    const reportLabel = document.getElementById('reportBtnLabel');
+    if (reportIcon) reportIcon.textContent = '📊';
+    if (reportLabel) reportLabel.textContent = '查看报告';
+    
     // 修改主界面按钮文案为“再次测试”
     try {
       startTestBtn.innerHTML = '<span class="icon">🔄</span> 再次测试';
