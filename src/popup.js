@@ -16,6 +16,7 @@ const customTab = document.getElementById('custom-tab');
 // 自动分析模式的DOM
 const urlInput = document.getElementById('urlInput');
 const startTestBtn = document.getElementById('startTestBtn');
+const startIntelligentTestBtn = document.getElementById('startIntelligentTestBtn');
 const stopTestBtn = document.getElementById('stopTestBtn');
 const viewReportBtn = document.getElementById('viewReportBtn');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -26,6 +27,8 @@ let successCount = document.getElementById('successCount');
 let failureCount = document.getElementById('failureCount');
 let apiErrorCount = document.getElementById('apiErrorCount');
 let progressBar = document.getElementById('progressBar');
+let aiPlanContainer = document.getElementById('aiPlanContainer');
+const testIntentInput = document.getElementById('testIntentInput');
 
 // 自定义测试模式的DOM
 const uploadBox = document.getElementById('uploadBox');
@@ -445,6 +448,92 @@ startTestBtn.addEventListener('click', async () => {
     startCustomTest();
   }
 });
+
+// 智能测试入口
+startIntelligentTestBtn.addEventListener('click', async () => {
+  const url = urlInput.value.trim();
+  const intent = (testIntentInput?.value || '').trim();
+  if (!url) {
+    alert('❌ 请输入目标网址');
+    return;
+  }
+  if (!intent) {
+    alert('⚠️ 请填写智能测试意图，以便AI生成计划');
+    return;
+  }
+
+  // 先打开/定位到目标页
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const activeTab = tabs[0];
+    let targetTab = activeTab;
+    if (!activeTab.url || !activeTab.url.startsWith(url)) {
+      addLog('正在打开目标页面用于智能分析...', 'info');
+      targetTab = await new Promise((resolve) => {
+        chrome.tabs.create({ url }, (tab) => resolve(tab));
+      });
+      await waitForPageReady(targetTab.id, url, 15000);
+      await ensureContentScriptReady(targetTab.id);
+    }
+
+    addLog('🤖 正在理解测试意图并生成计划...', 'info');
+    chrome.tabs.sendMessage(targetTab.id, { action: 'startIntelligentTest', userIntent: intent }).then((resp) => {
+      if (resp && resp.success) {
+        const plan = resp.plan || {};
+        // 展示计划
+        if (aiPlanContainer) {
+          aiPlanContainer.style.display = 'block';
+          aiPlanContainer.innerHTML = renderAIPlan(plan);
+        }
+        addLog('✓ AI计划生成完成，即将按推荐配置启动测试', 'success');
+
+        // 保存AI计划以供报告页展示
+        chrome.storage.local.set({ aiPlan: plan });
+
+        // 将推荐配置映射到现有配置
+        const rc = plan.recommendedConfig || {};
+        const config = {
+          testInteraction: rc.testButtons !== false,
+          monitorAPI: true,
+          captureScreenshot: captureScreenshot.checked,
+          captureConsole: captureConsole.checked,
+          testForms: rc.testForms !== false,
+          testLinks: rc.testLinks !== false,
+          delay: parseInt(rc.delay || delayInput.value) || 1200,
+          maxElements: parseInt(rc.maxElements || maxElements.value) || 100,
+          timeout: parseInt(rc.timeout || timeoutInput.value) || 30
+        };
+
+        // 保存与启动常规流程
+        chrome.storage.local.set({ savedConfig: config });
+        urlInput.value = url; // 保持一致
+
+        // 复用现有自动测试启动
+        startAutoTest();
+      } else {
+        addLog('❌ AI意图理解失败: ' + (resp?.error || '未知错误'), 'error');
+      }
+    }).catch((error) => {
+      addLog('❌ 智能测试入口失败: ' + error.message, 'error');
+    });
+  });
+});
+
+function renderAIPlan (plan) {
+  try {
+    const goal = plan?.intentAnalysis?.userGoal || '—';
+    const scope = plan?.intentAnalysis?.testScope || '—';
+    const areas = plan?.testStrategy?.testAreas || [];
+    const recs = plan?.aiInsights?.recommendations || [];
+    return `
+    <div style="background:#f0f9ff;border-left:4px solid #0066cc;padding:10px;border-radius:6px;">
+      <div style="font-weight:600;color:#0066cc;">🤖 AI测试计划</div>
+      <div style="margin-top:6px;color:#333;">目标：${goal}</div>
+      <div style="color:#333;">范围：${scope}</div>
+      <div style="margin-top:6px;color:#333;">重点区域：${areas.map(a => a.area).join('，') || '—'}</div>
+      ${recs.length ? `<div style="margin-top:6px;color:#555;">建议：${recs.slice(0, 3).join('；')}</div>` : ''}
+    </div>`;
+  } catch { return ''; }
+}
 
 /**
  * 开始自动测试

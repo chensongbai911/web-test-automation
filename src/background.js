@@ -1,10 +1,14 @@
 // Background Service Worker
 console.log('Background service worker started');
 
+import CrossPageTestCoordinator from './cross-page-test-coordinator.js';
+
+const crossPageCoordinator = new CrossPageTestCoordinator();
+
 let testingTabId = null;
 let testingStarted = false; // 标记测试是否已经真正开始
 
-// 监听来自popup的消息
+// 监听来自popup/内容脚本的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Background received:', request.action);
 
@@ -44,6 +48,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('收到清除测试状态请求');
     testingTabId = null;
     testingStarted = false;
+    crossPageCoordinator.stopTestSession();
     chrome.storage.local.set({
       testingState: {
         inProgress: false
@@ -54,6 +59,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('测试已开始，标记testingStarted=true, tabId:', sender.tab?.id);
     testingStarted = true;
     testingTabId = sender.tab?.id || request.tabId;
+
+    // 启用跨页面会话（读取已保存配置，如果有）
+    try {
+      const tabUrl = sender.tab?.url;
+      chrome.storage.local.get(['savedConfig'], (result) => {
+        crossPageCoordinator.startTestSession({
+          startUrl: tabUrl,
+          config: result.savedConfig || null,
+          tabId: testingTabId,
+          testObjective: '自动化功能测试'
+        });
+      });
+    } catch { }
   } else if (request.action === 'openPopup') {
     // 打开popup界面
     chrome.action.openPopup().catch(() => {
@@ -77,6 +95,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'openReport') {
     // 打开报告页面
     chrome.tabs.create({ url: chrome.runtime.getURL('src/report.html') });
+  } else if (request.action === 'startCrossPageTest') {
+    // 从popup显式启动跨页面测试
+    crossPageCoordinator.startTestSession({
+      startUrl: request.url,
+      config: request.config,
+      tabId: request.tabId,
+      testObjective: request.objective || '自动化功能测试'
+    });
+    testingTabId = request.tabId;
+    testingStarted = true;
+    sendResponse({ success: true });
+    return true;
+  } else if (request.action === 'stopCrossPageTest') {
+    crossPageCoordinator.stopTestSession();
+    testingStarted = false;
+    sendResponse({ success: true });
+    return true;
+  } else if (request.action === 'getCrossPageStatus') {
+    sendResponse({ success: true, status: crossPageCoordinator.getStatus() });
+    return true;
+  } else if (request.action === 'pageNavigationDetected') {
+    // 来自内容脚本的导航提示
+    crossPageCoordinator.handlePageNavigation({
+      fromUrl: request.fromUrl,
+      toUrl: request.toUrl,
+      trigger: request.trigger,
+      tabId: sender.tab?.id || testingTabId
+    });
+    sendResponse({ success: true });
+    return true;
   }
 
   sendResponse({ received: true });

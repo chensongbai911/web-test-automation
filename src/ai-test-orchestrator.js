@@ -405,6 +405,84 @@ ${JSON.stringify(testReport, null, 2)}
   }
 
   /**
+   * 🆕 核心功能7: 跨页面业务流程智能编排
+   */
+  async planCrossPageTestFlow (startUrl, testObjective) {
+    if (!this.qwen) {
+      return this.fallbackTestPlan({ interactiveElements: [], url: startUrl || window.location.href });
+    }
+
+    const prompt = `你是一位自动化测试专家。请为我规划一个跨页面测试流程。\n\n测试目标: ${testObjective}\n起始页面: ${startUrl}\n返回JSON测试计划（包含testPath、每页测试点与数据依赖）`;
+
+    try {
+      const result = await this.qwen.request([{ role: 'user', content: prompt }], { temperature: 0.4, max_tokens: 4000 });
+      const plan = this.parseAIResponse(result);
+      this.testContext.crossPagePlan = plan;
+      return plan;
+    } catch (error) {
+      console.error('[AI编排器] AI规划失败:', error);
+      return this.fallbackTestPlan({ interactiveElements: [], url: startUrl || window.location.href });
+    }
+  }
+
+  /**
+   * 🆕 核心功能8: 实时测试决策
+   */
+  async makeTestDecision (context) {
+    if (!this.qwen) return { decision: 'continue' };
+    const prompt = `当前测试上下文：\n- 当前页面: ${context.currentUrl}\n- 已测试页面: ${context.testedPages?.length || 0}个\n- 新页面: ${context.discoveredPages?.length || 0}个\n- 进度: ${context.progress || 0}%\n情况：${context.situation || ''}\n请返回JSON决策（decision/nextAction/expectedOutcome）`;
+    try {
+      const result = await this.qwen.request([{ role: 'user', content: prompt }]);
+      return this.parseAIResponse(result);
+    } catch (e) {
+      return { decision: 'continue' };
+    }
+  }
+
+  /**
+   * 🆕 核心功能9: 页面关系图谱构建
+   */
+  async buildSiteMap (visitedPages) {
+    if (!this.qwen) return null;
+    const prompt = `我已经访问了以下页面：\n${(visitedPages || []).map((p, i) => `${i + 1}. ${p.url} (from ${p.fromUrl || '-'})`).join('\n')}\n请分析并返回JSON站点结构/业务流程/覆盖率。`;
+    try {
+      const res = await this.qwen.request([{ role: 'user', content: prompt }]);
+      return this.parseAIResponse(res);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * 🆕 核心功能10: 元素优先级排序
+   * 基于测试目标对元素进行智能排序
+   */
+  async prioritizeElements (elements, testGoal) {
+    try {
+      if (!this.qwen || !elements || elements.length === 0) return elements || [];
+      const elementsSummary = elements.slice(0, 50).map((el, idx) => ({
+        index: idx,
+        type: el.type,
+        text: el.text,
+        selector: el.selector
+      }));
+
+      const prompt = `请为以下元素评估测试优先级。\n\n测试目标: ${testGoal} \n\n元素列表:\n${JSON.stringify(elementsSummary, null, 2)}\n\n返回JSON: {"prioritizedIndexes":[索引按优先级排序]}`;
+      const result = await this.qwen.request([{ role: 'user', content: prompt }], { temperature: 0.2, max_tokens: 1200 });
+      const data = this.parseAIResponse(result);
+      if (!data || !Array.isArray(data.prioritizedIndexes)) return elements;
+      const sorted = data.prioritizedIndexes.map(i => elements[i]).filter(Boolean);
+      // 补齐遗漏
+      const set = new Set(sorted);
+      for (const el of elements) if (!set.has(el)) sorted.push(el);
+      return sorted;
+    } catch (e) {
+      console.error('[AI编排器] 元素排序失败:', e);
+      return elements;
+    }
+  }
+
+  /**
    * 🎯 核心功能6: 复杂业务流程理解
    * AI 理解多步骤业务流程并自动编排测试
    */

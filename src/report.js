@@ -11,7 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     'lastTestReport',
     'enhancedTestReports',
     'latestReport',
-    'testReports'
+    'testReports',
+    'aiPlan',
+    'crossPageState',
+    'aiInsights'
   ], (result) => {
     console.log('[报告页面] Storage数据:', result);
 
@@ -38,6 +41,36 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('[报告页面] 未找到任何报告数据');
       showNoDataMessage();
     }
+
+    // 渲染AI计划摘要（如果有）
+    try {
+      if (result.aiPlan) {
+        renderAIPlanSummary(result.aiPlan);
+      }
+    } catch (e) { console.log('[报告页面] AI计划渲染跳过:', e?.message || e); }
+
+    // 渲染跨页面路径（如果有）
+    try {
+      if (result.crossPageState && result.crossPageState.pageStack && result.crossPageState.pageStack.length) {
+        renderCrossPagePath(result.crossPageState);
+      }
+    } catch (e) { console.log('[报告页面] 路径渲染跳过:', e?.message || e); }
+
+    // 渲染AI洞察（决策与异常）
+    try {
+      if (result.aiInsights) {
+        renderAIInsights(result.aiInsights);
+        // 决策时间线
+        renderDecisionTimeline(result.aiInsights?.decisions || []);
+      }
+    } catch (e) { console.log('[报告页面] AI洞察渲染跳过:', e?.message || e); }
+
+    // 覆盖率进度条（总覆盖与成功/失败占比）
+    try {
+      if (testData) {
+        renderCoverageProgress(testData);
+      }
+    } catch (e) { console.log('[报告页面] 覆盖率渲染跳过:', e?.message || e); }
   });
 });
 
@@ -153,6 +186,80 @@ function renderEnhancedReport () {
     }
   } catch (error) {
     console.error('[报告页面] 渲染错误:', error.message || String(error));
+  }
+}
+
+// 渲染AI计划摘要
+function renderAIPlanSummary (plan) {
+  try {
+    const container = document.querySelector('.content') || document.body;
+    const section = document.createElement('section');
+    section.className = 'section';
+    section.innerHTML = `
+      <h2>🤖 AI测试计划摘要</h2>
+      <div style="background:#f0f9ff;border-left:4px solid #0066cc;padding:12px;border-radius:6px;">
+        <div><strong>目标：</strong>${plan?.intentAnalysis?.userGoal || '—'}</div>
+        <div><strong>范围：</strong>${plan?.intentAnalysis?.testScope || '—'}</div>
+        <div><strong>重点区域：</strong>${(plan?.testStrategy?.testAreas || []).map(a => a.area).join('，') || '—'}</div>
+        ${plan?.aiInsights?.recommendations?.length ? `<div><strong>建议：</strong>${plan.aiInsights.recommendations.slice(0, 3).join('；')}</div>` : ''}
+      </div>
+    `;
+    container.appendChild(section);
+  } catch (e) {
+    console.error('[报告页面] 渲染AI计划摘要失败:', e);
+  }
+}
+
+// 渲染跨页面路径
+function renderCrossPagePath (state) {
+  try {
+    const container = document.querySelector('.content') || document.body;
+    const section = document.createElement('section');
+    section.className = 'section';
+    const nodesHtml = state.pageStack.map((p, i) => `
+      <div style="padding:6px;margin:4px 0;border:1px solid #eee;border-radius:4px;">
+        <strong>${i + 1}.</strong> ${p.url}
+        ${p.trigger ? `<span style="color:#777;">（${p.trigger}）</span>` : ''}
+      </div>`).join('');
+    section.innerHTML = `
+      <h2>🗺️ 跨页面测试路径</h2>
+      <div style="background:#fafafa;padding:8px;border-radius:6px;">${nodesHtml || '—'}</div>
+    `;
+    container.appendChild(section);
+  } catch (e) {
+    console.error('[报告页面] 渲染跨页面路径失败:', e);
+  }
+}
+
+// 渲染AI洞察（决策与异常）
+function renderAIInsights (insights) {
+  try {
+    const container = document.querySelector('.content') || document.body;
+    const section = document.createElement('section');
+    section.className = 'section';
+    const decisions = insights.decisions || [];
+    const anomalies = insights.anomalies || [];
+    const decisionsHtml = decisions.slice(-5).map(d => `
+      <div style="padding:6px;margin:4px 0;border:1px solid #eee;border-radius:4px;">
+        <strong>决策：</strong>${String(d.decision || '—').toUpperCase()} <span style="color:#777;">@${new Date(d.ts).toLocaleTimeString()}</span>
+        ${d.reason ? `<div style="color:#555;">理由：${d.reason}</div>` : ''}
+      </div>`).join('');
+    const anomaliesHtml = anomalies.slice(-5).map(a => `
+      <div style="padding:6px;margin:4px 0;border:1px solid #f5c2c7;background:#f8d7da;border-radius:4px;">
+        <strong>异常：</strong>${a.error || '—'} <span style="color:#777;">@${new Date(a.ts).toLocaleTimeString()}</span>
+        ${a.target ? `<div style="color:#555;">目标：${a.target}</div>` : ''}
+        ${a.diagnosis?.rootCause ? `<div style="color:#555;">根因：${a.diagnosis.rootCause}</div>` : ''}
+      </div>`).join('');
+    section.innerHTML = `
+      <h2>🧠 AI洞察</h2>
+      <div style="margin-bottom:10px;">决策记录（${decisions.length}）</div>
+      <div style="background:#fafafa;padding:8px;border-radius:6px;">${decisionsHtml || '—'}</div>
+      <div style="margin-top:12px;margin-bottom:10px;">异常记录（${anomalies.length}）</div>
+      <div style="background:#fff;padding:8px;border-radius:6px;">${anomaliesHtml || '—'}</div>
+    `;
+    container.appendChild(section);
+  } catch (e) {
+    console.error('[报告页面] 渲染AI洞察失败:', e);
   }
 }
 
@@ -593,6 +700,68 @@ function renderAPIStats (apiRequests) {
   document.getElementById('api3xx').textContent = total3xx;
   document.getElementById('api4xx').textContent = total4xx;
   document.getElementById('api5xx').textContent = total5xx;
+}
+
+// 覆盖率进度条渲染
+function renderCoverageProgress (data) {
+  try {
+    const container = document.querySelector('.content') || document.body;
+    const section = document.createElement('section');
+    section.className = 'section';
+
+    const total = Number(data.totalElements || (Array.isArray(data.elements) ? data.elements.length : 0) || 0);
+    const tested = Number((data.stats && data.stats.testedCount) || (Array.isArray(data.elements) ? data.elements.length : 0) || 0);
+    const success = Number((data.stats && data.stats.successCount) || 0);
+    const failure = Number((data.stats && data.stats.failureCount) || Math.max(0, tested - success) || 0);
+
+    const coverage = total > 0 ? Math.min(100, Math.round((tested / total) * 100)) : 0;
+    const successPct = tested > 0 ? Math.round((success / tested) * 100) : 0;
+    const failurePct = tested > 0 ? Math.max(0, 100 - successPct) : 0;
+
+    section.innerHTML = `
+      <h2>📈 覆盖率进度</h2>
+      <div style="margin-bottom: 10px; color: #555;">总元素：<strong>${total}</strong>，已测试：<strong>${tested}</strong>（覆盖率：<strong>${coverage}%</strong>）</div>
+      <div style="height: 16px; background: #f0f0f0; border-radius: 8px; overflow: hidden; display: flex;">
+        <div title="成功 ${success}" style="width: ${successPct}%; background: #4CAF50;"></div>
+        <div title="失败 ${failure}" style="width: ${failurePct}%; background: #f44336;"></div>
+      </div>
+      <div style="margin-top: 6px; color: #777; font-size: 12px;">成功：${success}（${successPct}%） | 失败：${failure}（${failurePct}%）</div>
+    `;
+    container.appendChild(section);
+  } catch (e) {
+    console.error('[报告页面] 渲染覆盖率进度失败:', e);
+  }
+}
+
+// AI决策时间线渲染
+function renderDecisionTimeline (decisions) {
+  try {
+    if (!Array.isArray(decisions) || decisions.length === 0) return;
+    const container = document.querySelector('.content') || document.body;
+    const section = document.createElement('section');
+    section.className = 'section';
+
+    const items = decisions.map((d, i) => {
+      const time = d.ts ? new Date(d.ts).toLocaleTimeString() : `#${i + 1}`;
+      const label = (d.decision || '—').toString().toUpperCase();
+      const reason = d.reason ? escapeHtml(String(d.reason)) : '';
+      return `
+        <div style="min-width: 180px; padding: 8px 10px; margin-right: 10px; border: 1px solid #eee; border-radius: 6px; background: #fff;">
+          <div style="font-size: 12px; color: #777;">${time}</div>
+          <div style="font-weight: bold; color: #333;">${label}</div>
+          ${reason ? `<div style="font-size: 12px; color: #666; margin-top: 4px;">${reason}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    section.innerHTML = `
+      <h2>🕒 AI决策时间线</h2>
+      <div style="display: flex; overflow-x: auto; padding-bottom: 6px;">${items}</div>
+    `;
+    container.appendChild(section);
+  } catch (e) {
+    console.error('[报告页面] 渲染AI决策时间线失败:', e);
+  }
 }
 
 // 渲染元素表

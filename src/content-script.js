@@ -76,6 +76,12 @@ setTimeout(() => {
       console.log('%c  ✓ 智能测试数据生成', 'color: #2196F3');
       console.log('%c  ✓ 测试结果深度分析', 'color: #2196F3');
     }
+
+    // 初始化AI意图引擎（延迟加载）
+    if (typeof AIIntentEngine !== 'undefined') {
+      window.aiIntentEngine = window.aiIntentEngine || new AIIntentEngine();
+      console.log('[Web测试工具] AI意图引擎已初始化');
+    }
   } catch (err) {
     console.error('[Web测试工具] 初始化处理器失败:', err);
   }
@@ -274,6 +280,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'ping') {
     // 响应ping消息，告知当前测试状态
     sendResponse({ success: true, testing: testActive });
+  } else if (request.action === 'resumeCrossPageTest') {
+    // 新页面恢复测试
+    try {
+      console.log('[Web测试工具] 🔄 恢复跨页面测试');
+      if (request.testConfig) {
+        testConfig = request.testConfig;
+      }
+      // 可选：恢复AI上下文
+      try {
+        if (window.aiTestOrchestrator && request.pageContext?.testPath) {
+          window.aiTestOrchestrator.testContext.visitedPages = new Set(request.pageContext.testPath);
+        }
+      } catch { }
+
+      // 在新页面稍候启动
+      setTimeout(() => {
+        startAutomatedTest().catch(err => {
+          console.error('[Web测试工具] 恢复测试失败:', err);
+        });
+      }, 800);
+      sendResponse({ success: true });
+    } catch (e) {
+      sendResponse({ success: false, error: e.message });
+    }
   } else if (request.action === 'analyzePageStructure') {
     // 🆕 分析页面结构，提取所有可交互元素
     console.log('[Web测试工具] 开始分析页面结构...');
@@ -337,6 +367,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         error: error.message
       });
     }
+  } else if (request.action === 'startIntelligentTest') {
+    // 使用AI意图理解来生成计划和推荐配置
+    (async () => {
+      try {
+        // 汇总当前页面上下文
+        const pageContext = {
+          url: window.location.href,
+          title: document.title,
+          summary: `forms:${document.querySelectorAll('form').length}, buttons:${document.querySelectorAll('button').length}, links:${document.querySelectorAll('a[href]').length}`
+        };
+
+        if (!window.aiIntentEngine) {
+          throw new Error('AIIntentEngine 未初始化');
+        }
+
+        const plan = await window.aiIntentEngine.understandIntent(request.userIntent || '自动化测试', pageContext);
+        sendResponse({ success: true, plan });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message || String(error) });
+      }
+    })();
+    return true; // 异步响应
   } else if (request.action === 'executeCustomTestCases') {
     // 🆕 执行自定义测试用例
     console.log('[Web测试工具] ✅ 收到executeCustomTestCases消息');
@@ -479,6 +531,59 @@ function getInteractiveElements () {
         });
       }
     });
+  }
+
+  // 🧩 识别UI框架的 Select 组件（Element Plus / Ant Design Vue / Naive UI）
+  try {
+    // Element Plus: .el-select → dropdown .el-select-dropdown → item .el-select-dropdown__item
+    const elSelects = document.querySelectorAll('.el-select');
+    elSelects.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.el-input__inner')?.value || wrapper.textContent || '').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-select',
+          framework: 'element-plus',
+          text: text || 'Select',
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // Ant Design Vue: .ant-select → trigger .ant-select-selector; dropdown .ant-select-dropdown → item .ant-select-item-option
+    const antSelects = document.querySelectorAll('.ant-select');
+    antSelects.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.ant-select-selection-item, .ant-select-selection-placeholder')?.textContent || wrapper.textContent || '').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-select',
+          framework: 'ant-design-vue',
+          text: text || 'Select',
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+
+    // Naive UI: .n-select → trigger .n-base-selection; dropdown .n-select-menu → item .n-select-option
+    const naiveSelects = document.querySelectorAll('.n-select');
+    naiveSelects.forEach(wrapper => {
+      if (elements.length >= maxElements) return;
+      if (wrapper.offsetParent !== null && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0) {
+        const text = (wrapper.querySelector('.n-base-selection-label')?.textContent || wrapper.textContent || '').trim().substring(0, 50);
+        elements.push({
+          element: wrapper,
+          type: 'component-select',
+          framework: 'naive-ui',
+          text: text || 'Select',
+          selector: getElementSelector(wrapper)
+        });
+      }
+    });
+  } catch (e) {
+    console.log('[Web测试工具] 框架组件识别跳过:', e?.message || e);
   }
 
   return elements;
@@ -1006,14 +1111,35 @@ async function performInteraction (item, index, total) {
           const absoluteHref = new URL(href, window.location.href).href;
 
           if (isSameDomain(absoluteHref, testStartDomain)) {
+            const beforeUrl = window.location.href;
+            // 模拟用户悬停
             element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-            await delay(100);
+            await delay(80);
             element.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+
+            // 点击进行真实导航
+            element.click();
+            await delay(800);
+            const afterUrl = window.location.href;
 
             addTestedUrl(absoluteHref);
             actionSuccess = true;
-            const pathDisplay = absoluteHref.replace(window.location.origin, '').substring(0, 40);
-            notifyPopup('addLog', `  ✓ 链接验证: ${pathDisplay}...`, 'success');
+            const pathDisplay = absoluteHref.replace(window.location.origin, '').substring(0, 60);
+            notifyPopup('addLog', `  ✓ 链接点击: ${pathDisplay}...`, 'success');
+
+            // 如果检测到页面跳转，通知Background协调器
+            if (beforeUrl !== afterUrl) {
+              try {
+                chrome.runtime.sendMessage({
+                  action: 'pageNavigationDetected',
+                  fromUrl: beforeUrl,
+                  toUrl: absoluteHref,
+                  trigger: text
+                }).catch(() => { });
+              } catch { }
+              // 跳转后本页面测试流程结束
+              return;
+            }
           } else {
             actionError = '跨域链接，已过滤';
           }
@@ -1071,6 +1197,15 @@ async function performInteraction (item, index, total) {
       } catch (e) {
         actionError = e.message;
       }
+    } else if (type === 'component-select') {
+      try {
+        const result = await performFrameworkSelect(item);
+        actionSuccess = !!result.success;
+        actionError = result.error || null;
+        await delay(testConfig.delay || 1200);
+      } catch (e) {
+        actionError = e.message;
+      }
     }
 
     // 更新统计
@@ -1105,6 +1240,75 @@ async function performInteraction (item, index, total) {
     notifyPopup('addLog', `  ✗ 错误: ${error.message}`, 'error');
     updateStatus();
   }
+}
+
+// 执行框架 Select 组件的交互（点击 → 等待下拉 → 选择第一项）
+async function performFrameworkSelect (item) {
+  const framework = item.framework || '';
+  try {
+    if (framework === 'element-plus') {
+      const wrapper = item.element.closest('.el-select') || item.element;
+      const trigger = wrapper.querySelector('.el-input__inner, .el-input');
+      if (!trigger) return { success: false, error: '未找到Element Plus触发元素' };
+      trigger.click();
+      // 等待下拉面板
+      const dropdown = await waitForVisible(() => document.querySelector('.el-select-dropdown'));
+      if (!dropdown) return { success: false, error: '下拉未出现' };
+      // 选择第一项
+      const option = dropdown.querySelector('.el-select-dropdown__item:not(.is-disabled)');
+      if (!option) return { success: false, error: '无可选项' };
+      option.click();
+      await delay(300);
+      // 验证面板关闭
+      const stillDropdown = document.querySelector('.el-select-dropdown');
+      const closed = !stillDropdown || stillDropdown.offsetParent === null || window.getComputedStyle(stillDropdown).display === 'none';
+      if (closed) {
+        notifyPopup('addLog', '  ✓ Element Plus下拉选择成功', 'success');
+        return { success: true };
+      }
+      return { success: true };
+    } else if (framework === 'ant-design-vue') {
+      const wrapper = item.element.closest('.ant-select') || item.element;
+      const trigger = wrapper.querySelector('.ant-select-selector');
+      if (!trigger) return { success: false, error: '未找到AntD触发元素' };
+      trigger.click();
+      const dropdown = await waitForVisible(() => document.querySelector('.ant-select-dropdown'));
+      if (!dropdown) return { success: false, error: '下拉未出现' };
+      const option = dropdown.querySelector('.ant-select-item-option:not(.ant-select-item-option-disabled)');
+      if (!option) return { success: false, error: '无可选项' };
+      option.click();
+      await delay(300);
+      notifyPopup('addLog', '  ✓ Ant Design下拉选择成功', 'success');
+      return { success: true };
+    } else if (framework === 'naive-ui') {
+      const wrapper = item.element.closest('.n-select') || item.element;
+      const trigger = wrapper.querySelector('.n-base-selection');
+      if (!trigger) return { success: false, error: '未找到Naive触发元素' };
+      trigger.click();
+      const dropdown = await waitForVisible(() => document.querySelector('.n-select-menu'));
+      if (!dropdown) return { success: false, error: '下拉未出现' };
+      const option = dropdown.querySelector('.n-select-option:not(.n-select-option--disabled)');
+      if (!option) return { success: false, error: '无可选项' };
+      option.click();
+      await delay(300);
+      notifyPopup('addLog', '  ✓ Naive UI下拉选择成功', 'success');
+      return { success: true };
+    }
+    return { success: false, error: '不支持的框架类型' };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// 等待某个元素变为可见（轮询，最多1500ms）
+async function waitForVisible (selectorFn, timeoutMs = 1500, intervalMs = 120) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const el = selectorFn();
+    if (el && el.offsetParent !== null) return el;
+    await delay(intervalMs);
+  }
+  return null;
 }
 
 // 更新状态
@@ -1262,6 +1466,9 @@ async function startAutomatedTest () {
       totalButtons: 0
     };
 
+    // 初始化AI洞察收集
+    window._aiInsights = { decisions: [], anomalies: [] };
+
     console.log('[Web测试工具] 📤 发送初始日志到popup');
     notifyPopup('addLog', `✓ 测试已开始！`, 'success');
     notifyPopup('addLog', `📄 页面: ${originalUrl}`, 'info');
@@ -1345,6 +1552,20 @@ async function startAutomatedTest () {
       }
 
       console.log('[Web测试工具] 去重后元素数量:', uniqueElements.length);
+
+      // 🧠 AI元素优先级排序（如可用）
+      try {
+        if (window.aiTestOrchestrator && window.aiTestOrchestrator.qwen) {
+          notifyPopup('addLog', '🤖 正在根据测试目标智能排序元素...', 'info');
+          const sorted = await window.aiTestOrchestrator.prioritizeElements(uniqueElements, '自动化功能测试');
+          if (Array.isArray(sorted) && sorted.length === uniqueElements.length) {
+            notifyPopup('addLog', '✓ 已应用AI优先级排序', 'success');
+            uniqueElements.splice(0, uniqueElements.length, ...sorted);
+          }
+        }
+      } catch (e) {
+        console.log('[Web测试工具] AI排序跳过:', e?.message || e);
+      }
       notifyPopup('addLog', `✓ 找到 ${uniqueElements.length} 个元素`, 'success');
       notifyPopup('addLog', `🧪 准备开始测试...`, 'info');
       updateStatus();
@@ -1359,6 +1580,27 @@ async function startAutomatedTest () {
           console.log(`[Web测试工具] 完成测试第 ${i + 1}/${uniqueElements.length} 个元素`);
           await delay(testConfig.delay || 1200);
 
+          // 🧠 每轮结束进行一次轻量AI决策检查（可选）
+          try {
+            if (window.aiTestOrchestrator && window.aiTestOrchestrator.qwen) {
+              const total = testStats.totalButtons || uniqueElements.length;
+              const pct = total > 0 ? Math.round((testStats.testedCount || 0) / total * 100) : 0;
+              const decision = await window.aiTestOrchestrator.makeTestDecision({
+                currentUrl: window.location.href,
+                testedPages: Array.from(testedUrls),
+                discoveredPages: [],
+                progress: pct,
+                situation: 'normal'
+              });
+              // 记录决策
+              try { window._aiInsights.decisions.push({ decision: decision?.decision, reason: decision?.reason, progress: pct, url: window.location.href, ts: Date.now() }); } catch { }
+              if (decision && (decision.decision === 'finish' || decision.decision === 'COMPLETE')) {
+                notifyPopup('addLog', '🤖 AI判定目标达成，提前结束测试', 'info');
+                break;
+              }
+            }
+          } catch { }
+
           // 检测页面是否被刷新或跳转
           if (!testActive) {
             console.warn('[Web测试工具] testActive被设为false，提前终止测试');
@@ -1370,6 +1612,35 @@ async function startAutomatedTest () {
           notifyPopup('addLog', `  ✗ 元素 ${i + 1} 测试异常: ${elemError.message}`, 'error');
           testStats.failureCount++;
           testStats.testedCount++;
+          // 🏥 AI异常诊断与自愈
+          try {
+            if (window.aiTestOrchestrator && window.aiTestOrchestrator.qwen) {
+              const errorContext = {
+                error: elemError.message,
+                action: 'interaction',
+                target: uniqueElements[i]?.selector || uniqueElements[i]?.text,
+                expected: null,
+                pageState: {
+                  title: document.title,
+                  url: window.location.href
+                }
+              };
+              const healResult = await window.aiTestOrchestrator.diagnosisAndAutoHeal(errorContext);
+              // 记录异常
+              try { window._aiInsights.anomalies.push({ error: elemError.message, target: errorContext.target, diagnosis: healResult?.diagnosis, ts: Date.now() }); } catch { }
+              if (healResult?.autoHeal?.canHeal && Array.isArray(healResult?.autoHeal?.healingSteps)) {
+                const healed = await applyHealingSteps(healResult.autoHeal.healingSteps, uniqueElements[i]);
+                if (healed) {
+                  notifyPopup('addLog', '🔧 AI已尝试修复并重试成功', 'success');
+                  // 统计修正：原已计失败，这里转换为成功
+                  testStats.successCount++;
+                  testStats.failureCount = Math.max(0, testStats.failureCount - 1);
+                } else {
+                  notifyPopup('addLog', '🔧 AI尝试修复未成功', 'warning');
+                }
+              }
+            }
+          } catch { }
           updateStatus();
         }
       }
@@ -1388,6 +1659,11 @@ async function startAutomatedTest () {
 
       // 保存测试报告
       saveTestReport(testStats, uniqueElements, apiRequests);
+
+      // 保存AI洞察
+      try {
+        chrome.storage.local.set({ aiInsights: window._aiInsights });
+      } catch { }
 
       // 发送测试完成消息
       chrome.runtime.sendMessage({ action: 'testComplete' }).catch(() => { });
@@ -1435,3 +1711,44 @@ window.addEventListener('load', () => {
 });
 
 console.log('[Web测试工具] Content script初始化完成');
+
+// 执行AI建议的修复步骤
+async function applyHealingSteps (steps, item) {
+  try {
+    for (const step of steps) {
+      const actionRaw = step.action || step.Action || '';
+      const action = String(actionRaw).toUpperCase();
+      if (action === 'WAIT') {
+        const ms = (step.estimatedTime || step.waitTime || 1) * 1000;
+        await delay(ms);
+      } else if (action === 'RETRY') {
+        try {
+          await performInteraction(item, 0, 1);
+          return true;
+        } catch { }
+      } else if (action === 'ADJUST_SELECTOR' || action === 'ADJUSTSELECTOR') {
+        const alt = step.alternativeSelector || step.selector;
+        if (alt) {
+          const el = document.querySelector(alt);
+          if (el) {
+            item.element = el;
+            item.selector = alt;
+            try {
+              await performInteraction(item, 0, 1);
+              return true;
+            } catch { }
+          }
+        }
+      } else if (action === 'RELOAD') {
+        location.reload();
+        return false;
+      } else if (action === 'NAVIGATE_BACK' || action === 'GOBACK') {
+        history.back();
+        return false;
+      }
+    }
+  } catch (e) {
+    console.log('[Web测试工具] applyHealingSteps异常:', e);
+  }
+  return false;
+}
