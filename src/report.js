@@ -1187,7 +1187,7 @@ function renderE2EScenarioFlow (scenario) {
 
         content += `<div style="margin-bottom: 8px;">
           <div style="font-size: 12px; color: #555; margin-bottom: 3px;">
-            <span style="color: ${methodColor}; font-weight: bold;">${method}</span> 
+            <span style="color: ${methodColor}; font-weight: bold;">${method}</span>
             <span style="color: #999;">(${count})</span>
           </div>
           <div style="height: 16px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
@@ -1227,12 +1227,12 @@ function renderE2EScenarioFlow (scenario) {
         const icon = !step.success ? '❌' : '🎯';
         content += `<div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #eee;">
           <div style="font-weight: bold; color: #333;">
-            ${icon} ${step.action} 
+            ${icon} ${step.action}
             ${isCritical ? '<span style="background: #faad14; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">关键</span>' : ''}
             ${!step.success ? '<span style="background: #ff4d4f; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">失败</span>' : ''}
           </div>
           <div style="font-size: 12px; color: #666; margin-top: 3px;">
-            ${escapeHtml(step.target)} 
+            ${escapeHtml(step.target)}
             <span style="color: #999;">(${step.duration}ms)</span>
           </div>
           ${step.error ? `<div style="font-size: 12px; color: #d32f2f; margin-top: 3px;">错误: ${escapeHtml(step.error)}</div>` : ''}

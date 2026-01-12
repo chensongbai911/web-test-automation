@@ -34,7 +34,7 @@ class E2EScenarioTracker {
    * @param {number} step.duration - 操作耗时（毫秒）
    * @param {Array} step.apiCalls - 触发的API调用列表
    */
-  recordStep(step) {
+  recordStep (step) {
     const record = {
       id: this.scenario.steps.length + 1,
       timestamp: Date.now(),
@@ -74,7 +74,7 @@ class E2EScenarioTracker {
    * 记录一个决策点（AI决策或测试策略调整）
    * @param {Object} decision - 决策信息
    */
-  recordDecision(decision) {
+  recordDecision (decision) {
     const decisionRecord = {
       id: this.scenario.decisions.length + 1,
       timestamp: Date.now(),
@@ -94,7 +94,7 @@ class E2EScenarioTracker {
    * 判断步骤是否为关键失败
    * @private
    */
-  isStepCritical(step) {
+  isStepCritical (step) {
     const criticalActions = ['navigate', 'submit', 'login'];
     return criticalActions.includes(step.action);
   }
@@ -102,7 +102,7 @@ class E2EScenarioTracker {
   /**
    * 获取完整场景数据
    */
-  getScenario() {
+  getScenario () {
     this.scenario.summary.duration = Date.now() - this.scenario.startTime;
     return { ...this.scenario };
   }
@@ -110,7 +110,7 @@ class E2EScenarioTracker {
   /**
    * 获取按类型分组的步骤
    */
-  getStepsByType() {
+  getStepsByType () {
     const grouped = {};
     this.scenario.steps.forEach(step => {
       const type = step.componentType || step.action;
@@ -123,7 +123,7 @@ class E2EScenarioTracker {
   /**
    * 获取按框架分组的步骤
    */
-  getStepsByFramework() {
+  getStepsByFramework () {
     const grouped = {};
     this.scenario.steps
       .filter(s => s.framework)
@@ -138,7 +138,7 @@ class E2EScenarioTracker {
   /**
    * 生成关键路径（失败和关键步骤）
    */
-  generateCriticalPath() {
+  generateCriticalPath () {
     return this.scenario.steps.filter(step => {
       return !step.success || this.isStepCritical(step);
     });
@@ -147,7 +147,7 @@ class E2EScenarioTracker {
   /**
    * 获取操作耗时分析
    */
-  getPerformanceAnalysis() {
+  getPerformanceAnalysis () {
     if (this.scenario.steps.length === 0) {
       return { avgDuration: 0, maxDuration: 0, minDuration: 0, total: 0 };
     }
@@ -164,7 +164,7 @@ class E2EScenarioTracker {
   /**
    * 获取API调用统计
    */
-  getAPIStats() {
+  getAPIStats () {
     const stats = {
       totalCalls: 0,
       byMethod: {},
@@ -200,7 +200,7 @@ class E2EScenarioTracker {
   /**
    * 生成场景总结（用于报告）
    */
-  generateSummary() {
+  generateSummary () {
     const scenario = this.getScenario();
     const perf = this.getPerformanceAnalysis();
     const apiStats = this.getAPIStats();
@@ -227,7 +227,7 @@ class E2EScenarioTracker {
   /**
    * 重置场景
    */
-  reset() {
+  reset () {
     this.scenario = {
       startTime: Date.now(),
       steps: [],
