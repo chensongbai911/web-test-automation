@@ -216,6 +216,12 @@ function notifyPopup (action, message, type = 'info') {
     }
   }
 
+  // 🔍 检查扩展上下文是否有效
+  if (!chrome.runtime || !chrome.runtime.id) {
+    console.warn('[Web测试工具] 扩展上下文已失效，无法通知popup');
+    return;
+  }
+
   // 尝试发送到popup（可能已关闭）- 静默失败
   if (chrome.runtime && chrome.runtime.sendMessage) {
     chrome.runtime.sendMessage({
@@ -225,6 +231,10 @@ function notifyPopup (action, message, type = 'info') {
     }, (response) => {
       // 静默处理错误
       if (chrome.runtime.lastError) {
+        const errorMsg = chrome.runtime.lastError.message || '';
+        if (errorMsg.includes('context invalidated')) {
+          console.error('[Web测试工具] ⚠️ 扩展上下文已失效，请重新加载扩展');
+        }
         // Popup已关闭是正常的
       }
     });
@@ -233,6 +243,12 @@ function notifyPopup (action, message, type = 'info') {
 
 // 通知悬浮球
 function notifyFloatingBall (action, data) {
+  // 🔍 检查扩展上下文是否有效
+  if (!chrome.runtime || !chrome.runtime.id) {
+    console.warn('[Web测试工具] 扩展上下文已失效，无法通知悬浮球');
+    // 仍然尝试使用postMessage兜底
+  }
+
   // 通过injector桥接 + postMessage 双通道，确保页面主上下文能接收到
   try {
     const actionMap = {
@@ -247,13 +263,15 @@ function notifyFloatingBall (action, data) {
     const mapped = actionMap[action] || action;
 
     // 通道1：runtime → injector → window 事件
-    chrome.runtime.sendMessage({
-      action: mapped,
-      data: data,
-      message: data?.message,
-      type: data?.type,
-      status: data?.status
-    }).catch(() => { });
+    if (chrome.runtime && chrome.runtime.id) {
+      chrome.runtime.sendMessage({
+        action: mapped,
+        data: data,
+        message: data?.message,
+        type: data?.type,
+        status: data?.status
+      }).catch(() => { });
+    }
 
     // 通道2：直接 postMessage 到页面主上下文（兜底）
     try {

@@ -4,7 +4,7 @@
 
 ## 📚 快速链接
 
-- **🚀 快速开始**：[QUICK_REFERENCE.md](QUICK_REFERENCE.md) - 快速参考卡（5分钟上手）
+- **🚀 快速开始**：[QUICK_REFERENCE.md](QUICK_REFERENCE.md) - 快速参考卡（5 分钟上手）
 - **📖 完整指南**：[QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md) - 详细使用指南
 - **🔧 技术规格**：[WORKFLOW_TEST_REPORT.md](WORKFLOW_TEST_REPORT.md) - 三阶段工作流技术规格
 - **✅ 完成报告**：[COMPLETION_REPORT_2026_01_12.md](COMPLETION_REPORT_2026_01_12.md) - 最终完成报告

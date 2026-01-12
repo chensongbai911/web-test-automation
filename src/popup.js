@@ -532,6 +532,12 @@ startIntelligentTestBtn.addEventListener('click', async () => {
 
   // 如果没有意图，先进行页面分析
   if (!intent) {
+    // 🔍 先检查扩展上下文是否有效
+    if (!chrome.runtime || !chrome.runtime.id) {
+      alert('⚠️ 扩展上下文已失效，需要重新加载\n\n请按以下步骤操作：\n1. 打开 chrome://extensions/\n2. 找到"Web功能自动化测试工具"\n3. 点击"重新加载"按钮\n4. 关闭此页面并重新打开');
+      return;
+    }
+
     addLog('🔍 正在分析页面功能...', 'info');
     // 显示主界面加载提示
     showGlobalLoading({
@@ -561,7 +567,19 @@ startIntelligentTestBtn.addEventListener('click', async () => {
           chrome.tabs.sendMessage(targetTab.id, {
             action: 'analyzePageForIntent',
             url: url
-          }).then((resp) => {
+          }, (resp) => {
+            // 检查runtime错误
+            if (chrome.runtime.lastError) {
+              const errorMsg = chrome.runtime.lastError.message || '';
+              console.error('[Popup] analyzePageForIntent错误:', errorMsg);
+              hideGlobalLoading();
+              if (errorMsg.includes('context invalidated') || errorMsg.includes('Extension context')) {
+                alert('⚠️ 扩展上下文已失效\n\n请重新加载扩展：\n1. 打开 chrome://extensions/\n2. 找到本扩展\n3. 点击"重新加载"\n4. 关闭页面重新打开');
+              } else {
+                addLog('⚠️ 页面分析失败: ' + errorMsg, 'warning');
+              }
+              return;
+            }
             if (resp && resp.success && resp.pageAnalysis) {
               // 优先使用内容脚本生成的高质量摘要
               let suggestion = (resp.intentSuggestion || '').trim();
@@ -591,23 +609,26 @@ startIntelligentTestBtn.addEventListener('click', async () => {
               // 填充意图文本框
               if (testIntentInput) {
                 testIntentInput.value = suggestion || '进行完整的页面功能测试，包括所有交互元素和页面导航';
-                testIntentInput.focus();
-                testIntentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
+
               // 更新加载提示为完成
-              updateGlobalLoading({ percent: 100, text: '✅ 意图生成完成' });
-              setTimeout(() => hideGlobalLoading(), 500);
-              addLog('✓ AI已自动分析页面并生成测试建议，您可以修改后继续点击按钮开始测试', 'success');
+              updateGlobalLoading({ percent: 100, text: '✅ 意图生成完成，即将开始测试...' });
+              addLog('✓ AI已自动分析页面并生成测试建议，即将自动开始测试', 'success');
+
+              // 🎯 自动继续执行测试，不需要用户再次点击
+              setTimeout(() => {
+                hideGlobalLoading();
+                // 设置意图并立即开始测试
+                const generatedIntent = testIntentInput?.value || suggestion || '自动化功能测试';
+                console.log('[Popup] 自动启动智能测试，意图:', generatedIntent);
+
+                // 直接调用智能测试流程（跳过分析阶段）
+                startIntelligentTestWithIntent(url, generatedIntent);
+              }, 800);
             } else {
-              // 分析失败
               hideGlobalLoading();
               addLog('⚠️ 页面分析失败，请手动填写测试意图', 'warning');
             }
-          }).catch((error) => {
-            // 请求失败
-            hideGlobalLoading();
-            addLog('⚠️ 页面分析出错，请手动填写测试意图', 'warning');
-            console.error('[Popup] 页面分析错误:', error);
           });
         } catch (error) {
           hideGlobalLoading();
@@ -624,11 +645,24 @@ startIntelligentTestBtn.addEventListener('click', async () => {
     }
   }
 
+  // 执行智能测试（有意图的情况）
+  startIntelligentTestWithIntent(url, intent);
+});
+
+// 🎯 独立的智能测试执行函数
+async function startIntelligentTestWithIntent (url, intent) {
+  const icon = document.getElementById('intelligentTestIcon');
+  const label = document.getElementById('intelligentTestLabel');
+
   try {
+    // 🔍 检查扩展上下文是否有效
+    if (!chrome.runtime || !chrome.runtime.id) {
+      alert('⚠️ 扩展上下文已失效，需要重新加载\n\n请按以下步骤操作：\n1. 打开 chrome://extensions/\n2. 找到"Web功能自动化测试工具"\n3. 点击"重新加载"按钮\n4. 关闭此页面并重新打开');
+      return;
+    }
+
     // 设置按钮为Loading状态
     startIntelligentTestBtn.disabled = true;
-    const icon = document.getElementById('intelligentTestIcon');
-    const label = document.getElementById('intelligentTestLabel');
     if (icon) icon.textContent = '⏳';
     if (label) label.textContent = '正在分析中...';
 
@@ -654,7 +688,39 @@ startIntelligentTestBtn.addEventListener('click', async () => {
           emoji: '🤖',
           percent: 30
         });
-        chrome.tabs.sendMessage(targetTab.id, { action: 'startIntelligentTest', userIntent: intent }).then((resp) => {
+
+        // 使用回调方式以正确检测runtime错误
+        chrome.tabs.sendMessage(targetTab.id, { action: 'startIntelligentTest', userIntent: intent }, (resp) => {
+          // 首先检查runtime错误
+          if (chrome.runtime.lastError) {
+            const errorMsg = chrome.runtime.lastError.message || '';
+            console.error('[Popup] startIntelligentTest runtime error:', errorMsg);
+            hideGlobalLoading();
+
+            if (errorMsg.includes('context invalidated') || errorMsg.includes('Extension context')) {
+              alert('⚠️ 扩展上下文已失效\n\n请重新加载扩展：\n1. 打开 chrome://extensions/\n2. 找到本扩展\n3. 点击"重新加载"\n4. 关闭页面重新打开');
+            } else {
+              alert('⚠️ 消息发送失败: ' + errorMsg);
+            }
+
+            // 恢复按钮状态
+            startIntelligentTestBtn.disabled = false;
+            if (icon) icon.textContent = '🎯';
+            if (label) label.textContent = '让AI智能分析';
+            return;
+          }
+
+          // 检查响应
+          if (!resp) {
+            console.error('[Popup] startIntelligentTest 无响应');
+            hideGlobalLoading();
+            alert('⚠️ 未收到响应，请检查content script是否正常加载');
+            startIntelligentTestBtn.disabled = false;
+            if (icon) icon.textContent = '🎯';
+            if (label) label.textContent = '让AI智能分析';
+            return;
+          }
+
           if (resp && resp.success) {
             const plan = resp.plan || {};
             // 更新进度
@@ -707,19 +773,15 @@ startIntelligentTestBtn.addEventListener('click', async () => {
             startAutoTest();
           } else {
             hideGlobalLoading();
-            addLog('❌ AI意图理解失败: ' + (resp?.error || '未知错误'), 'error');
+            const errorMsg = resp?.error || '未知错误';
+            console.error('[Popup] startIntelligentTest failed:', errorMsg);
+            addLog('❌ AI意图理解失败: ' + errorMsg, 'error');
+            alert('⚠️ AI意图理解失败\n\n错误：' + errorMsg + '\n\n请检查：\n1. Qwen API配置是否正确\n2. 网络连接是否正常\n3. Console中的详细错误信息');
             // 恢复按钮状态
             startIntelligentTestBtn.disabled = false;
             if (icon) icon.textContent = '🎯';
             if (label) label.textContent = '让AI智能分析';
           }
-        }).catch((error) => {
-          hideGlobalLoading();
-          addLog('❌ 智能测试入口失败: ' + error.message, 'error');
-          // 恢复按钮状态
-          startIntelligentTestBtn.disabled = false;
-          if (icon) icon.textContent = '🎯';
-          if (label) label.textContent = '让AI智能分析';
         });
       } catch (innerError) {
         hideGlobalLoading();
@@ -744,7 +806,7 @@ startIntelligentTestBtn.addEventListener('click', async () => {
     if (icon) icon.textContent = '🎯';
     if (label) label.textContent = '让AI智能分析';
   }
-});
+}
 
 function renderAIPlan (plan) {
   try {
