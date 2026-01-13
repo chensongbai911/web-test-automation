@@ -146,7 +146,7 @@
     };
 
     (document.head || document.documentElement).appendChild(script);
-  }, 100);
+  }, 300);
 
   // ============================================
   // 第3步：设置消息桥接 - 带消息队列机制

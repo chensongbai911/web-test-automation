@@ -96,6 +96,33 @@ function hideGlobalLoading () {
   if (!globalLoadingOverlay) return;
   globalLoadingOverlay.style.display = 'none';
 }
+
+// 确保悬浮球显示（含重试），用于弹窗恢复测试状态时的兜底召回
+function sendShowBallWithRetry (tabId, options = {}) {
+  const maxRetries = options.maxRetries || 5;
+  const retryInterval = options.retryInterval || 300;
+  let retries = 0;
+
+  const tryShow = () => {
+    chrome.tabs.sendMessage(tabId, { action: 'showFloatingBall' }).then(() => {
+      console.log('[Popup] ✅ 悬浮球显示命令已执行');
+      if (options.silent !== true) {
+        addLog('✨ 悬浮球已显示在页面右下角', 'success');
+      }
+    }).catch((err) => {
+      retries++;
+      console.warn(`[Popup] showFloatingBall 失败，准备重试 ${retries}/${maxRetries}:`, err && err.message);
+      if (retries < maxRetries) {
+        setTimeout(tryShow, retryInterval);
+      } else {
+        console.warn('[Popup] showFloatingBall 重试次数用尽，停止重试');
+      }
+    });
+  };
+
+  // 首次尝试延迟 300ms，确保 floating-ball-injector 成功注入
+  setTimeout(tryShow, 300);
+}
 const stopTestBtn = document.getElementById('stopTestBtn');
 const viewReportBtn = document.getElementById('viewReportBtn');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -473,6 +500,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 恢复配置
     console.log('[Popup] 🔥 准备调用 storage.local.get');
     chrome.storage.local.get(['savedConfig', 'testingState'], (result) => {
+      console.log('');
+      console.log('╔════════════════════════════════════════════════════════╗');
+      console.log('║  📊 当前存储状态快照（Popup 打开时）                    ║');
+      console.log('╚════════════════════════════════════════════════════════╝');
+      console.log('testingState:', JSON.stringify(result.testingState, null, 2));
+      console.log('savedConfig:', result.savedConfig ? '已配置' : '未配置');
+      console.log('');
       console.log('[Popup] 🔥 storage.get 回调执行！');
       console.log('[Popup] result:', result);
 
@@ -587,6 +621,15 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[Popup] 🔥🔥🔥 检测到进行中的测试！');
         console.log('[Popup] testingState 详情:', testingState);
 
+        // 💡 显示用户友好的恢复提示
+        if (statusSection) {
+          const restoreHint = document.createElement('div');
+          restoreHint.style.cssText = 'background:#e3f2fd;color:#1565c0;padding:10px;border-radius:6px;margin-bottom:10px;font-size:13px;';
+          restoreHint.innerHTML = '🔄 <strong>正在恢复测试会话...</strong> 测试仍在后台进行中';
+          statusSection.insertBefore(restoreHint, statusSection.firstChild);
+          setTimeout(() => restoreHint.remove(), 3000);
+        }
+
         const startTime = new Date(testingState.startTime).getTime();
         const now = new Date().getTime();
         const elapsed = (now - startTime) / 1000 / 60;
@@ -680,8 +723,9 @@ document.addEventListener('DOMContentLoaded', () => {
                   }
                 });
 
-                // 召回悬浮球
-                chrome.tabs.sendMessage(match.id, { action: 'showFloatingBall' }).catch(() => {});
+                // 召回悬浮球（含重试）
+                addLog('✨ 正在召回悬浮球...', 'info');
+                sendShowBallWithRetry(match.id);
               } else {
                 console.warn('[Popup] 未找到与URL匹配的标签页');
               }
@@ -781,6 +825,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 addLog('✓ 恢复之前的测试状态', 'success');
                 const elapsedSec = Math.floor((now - startTime) / 1000);
                 addLog(`📊 测试已运行 ${elapsedSec} 秒`, 'info');
+
+                // 兜底：弹窗恢复时自动召回悬浮球（含重试）
+                sendShowBallWithRetry(testingState.tabId);
               }
             }).catch((error) => {
               console.warn('[Popup] ⚠️ ping 失败（测试可能仍在后台运行）:', error);
@@ -845,6 +892,9 @@ document.addEventListener('DOMContentLoaded', () => {
               });
 
               addLog('⏳ 测试进行中（加载中...）', 'warning');
+
+              // 兜底：即使ping失败也尝试召回悬浮球（含重试）
+              sendShowBallWithRetry(testingState.tabId);
 
               // 🔥 恢复之前保存的日志
               chrome.storage.local.get(['testLogs'], (logResult) => {
@@ -1218,7 +1268,8 @@ async function startIntelligentTestWithIntent (url, intent) {
             // 确保URL已填充到输入框（startAutoTest从这里读取）
             urlInput.value = url;
 
-            // 保存测试状态（关闭popup后可恢复）
+            // 🔥 保存测试状态（关闭popup后可恢复）- 先保存但 tabId 将由 startAutoTest 填充
+            const intentStartTime = new Date().toISOString();
             chrome.storage.local.set({
               testingState: {
                 inProgress: true,
@@ -1226,15 +1277,15 @@ async function startIntelligentTestWithIntent (url, intent) {
                 url: url,
                 intent: intent,
                 config: config,
-                startTime: new Date().toISOString()
+                startTime: intentStartTime,
+                tabId: null  // 将由 startAutoTest 更新
               }
-            });
-
-            // 延迟200ms确保状态保存完成，然后启动测试
-            setTimeout(() => {
+            }, () => {
+              console.log('[Popup] ✅ 智能测试状态已保存（tabId 将稍后更新）');
+              // 确保状态保存完成后再调用 startAutoTest
               console.log('[Popup] 开始调用 startAutoTest()');
               startAutoTest();
-            }, 200);
+            });
           } else {
             hideGlobalLoading();
             const errorMsg = resp?.error || '未知错误';
@@ -1322,7 +1373,15 @@ async function startAutoTest () {
   startTestBtn.disabled = true;
   startIntelligentTestBtn.disabled = true;
   stopTestBtn.disabled = false;
-  // 测试过程中更新查看报告按钮为"正在生成报告中"提示
+
+  // 🔥 启动状态保活定时器
+  startStateKeepAlive();
+
+  // 🔥 保存当前测试意图（如果有）
+  const currentIntent = testIntentInput?.value || '';
+  if (currentIntent) {
+    chrome.storage.local.set({ lastTestIntent: currentIntent });
+  }  // 测试过程中更新查看报告按钮为"正在生成报告中"提示
   viewReportBtn.disabled = false;
   const reportIcon = document.getElementById('reportBtnIcon');
   const reportLabel = document.getElementById('reportBtnLabel');
@@ -1333,41 +1392,7 @@ async function startAutoTest () {
   // downloadTestCaseReportBtn.disabled = true; // 删除这一行
   console.log('[Popup] ⚠️ 测试用例报告按钮保持可用状态');
 
-  // 🔥 立即保存测试状态（关键！确保关闭popup后状态保持）
-  // ⚠️ 修复：只在真正开始新测试时清空数据，如果是恢复测试则保留
-  chrome.storage.local.get(['testingState'], (stateResult) => {
-    const isResuming = stateResult.testingState && stateResult.testingState.inProgress;
-
-    chrome.storage.local.set({
-      testingState: {
-        inProgress: true,
-        mode: 'auto',
-        url: url,
-        config: config,
-        startTime: isResuming ? stateResult.testingState.startTime : new Date().toISOString(),
-        tabId: null // 稍后更新
-      }
-    });
-
-    // 🔥 只在开始新测试时清空统计数据和日志
-    if (!isResuming) {
-      console.log('[Popup] 🆕 开始新测试，清空之前的数据');
-      chrome.storage.local.set({
-        testStats: {
-          testedCount: 0,
-          successCount: 0,
-          failureCount: 0,
-          apiErrorCount: 0,
-          progress: 0
-        },
-        testLogs: []
-      });
-    } else {
-      console.log('[Popup] 🔄 恢复测试状态，保留现有数据');
-    }
-
-    console.log('[Popup] ✅ 测试状态已保存到storage');
-  });
+  // 🔥 注意：不在此处保存 testingState，等待获取 tab 后再保存（含 tabId）
   statusSection.style.display = 'block';
   statusSection.innerHTML = `
     <h3>测试状态</h3>
@@ -1412,7 +1437,7 @@ async function startAutoTest () {
   addLog('🚀 正在启动自动测试...', 'info');
 
   // 显示执行阶段的加载提示（若尚未显示）
-  if (globalLoadingOverlay.style.display === 'none') {
+  if (globalLoadingOverlay && globalLoadingOverlay.style.display === 'none') {
     showGlobalLoading({
       title: '正在执行测试',
       text: '🚀 自动化测试进行中，请稍候...',
@@ -1452,6 +1477,50 @@ async function startAutoTest () {
 
     currentTab = targetTab;
 
+    // 🔥🔥🔥 立即保存 tabId 到测试状态（关键！确保状态可被恢复）
+    // 优先读取已有的 startTime（如果是恢复测试），否则创建新的
+    console.log('[Popup] 🔥 准备保存测试状态...');
+    const existingState = await new Promise(resolve => {
+      chrome.storage.local.get(['testingState'], r => resolve(r.testingState));
+    });
+
+    const startTime = (existingState && existingState.startTime) || new Date().toISOString();
+    console.log('[Popup] 🔥 立即保存测试状态（含tabId）:', currentTab.id);
+    await new Promise((resolve) => {
+      chrome.storage.local.set({
+        testingState: {
+          inProgress: true,
+          mode: testingMode || 'auto',
+          url: url,
+          config: config,
+          startTime: startTime,
+          tabId: currentTab.id
+        }
+      }, () => {
+        console.log('[Popup] ✅ 测试状态已保存（含tabId）');
+        console.log('');
+        console.log('╔════════════════════════════════════════════════════════╗');
+        console.log('║  💾 测试状态已保存到 chrome.storage.local              ║');
+        console.log('╚════════════════════════════════════════════════════════╝');
+        console.log('testingState: {');
+        console.log('  inProgress: true,');
+        console.log('  mode: "auto",');
+        console.log('  url:', url);
+        console.log('  tabId:', currentTab.id);
+        console.log('  startTime:', startTime);
+        console.log('}');
+        console.log('');
+        resolve();
+      });
+    });
+
+    // 通知 background 测试已开始
+    chrome.runtime.sendMessage({
+      action: 'testStarted',
+      tabId: currentTab.id,
+      url: url
+    }).catch(() => { });
+
     const needWait = (currentUrl !== targetUrl);
     const waitTime = needWait ? 3000 : 1000;
 
@@ -1463,7 +1532,7 @@ async function startAutoTest () {
     chrome.storage.local.set({
       testData: {
         url: url,
-        startTime: new Date().toISOString(),
+        startTime: startTime,
         buttons: [],
         apiRequests: [],
         errors: [],
@@ -1494,19 +1563,6 @@ async function startAutoTest () {
       }
       addLog('⚠️ 悬浮球显示失败，但测试继续...', 'warning');
     }
-
-    // 更新测试状态，保存tabId
-    chrome.storage.local.set({
-      testingState: {
-        inProgress: true,
-        mode: 'auto',
-        url: url,
-        config: config,
-        startTime: new Date().toISOString(),
-        tabId: currentTab.id
-      }
-    });
-    console.log('[Popup] ✅ 测试状态已更新（含tabId）');
 
     // 开始测试
     setTimeout(() => {
@@ -1556,22 +1612,8 @@ async function startAutoTest () {
                 if (response && response.success) {
                   addLog('✓ 测试命令已发送', 'success');
 
-                  console.log('[Popup] ========== 发送showFloatingBall消息 ==========');
-                  chrome.tabs.sendMessage(currentTab.id, {
-                    action: 'showFloatingBall'
-                  }).then(() => {
-                    console.log('[Popup] ✅ 悬浮球已显示');
-                  }).catch((err) => {
-                    console.error('[Popup] ❌ 悬浮球显示失败:', err);
-                  });
-
-                  chrome.storage.local.set({
-                    testingState: {
-                      inProgress: true,
-                      tabId: currentTab.id,
-                      startTime: new Date().toISOString()
-                    }
-                  });
+                  console.log('[Popup] ========== 使用重试机制显示悬浮球 ==========');
+                  sendShowBallWithRetry(currentTab.id, { maxRetries: 5, retryInterval: 300, silent: false });
 
                   isFloatingBallMode = true;
                 }
@@ -1801,6 +1843,10 @@ stopTestBtn.addEventListener('click', () => {
   chrome.tabs.sendMessage(currentTab.id, { action: 'stopTest' }).catch(() => { });
 
   testingInProgress = false;
+
+  // 🔥 停止状态保活定时器
+  stopStateKeepAlive();
+
   startTestBtn.disabled = false;
   startIntelligentTestBtn.disabled = false;
   stopTestBtn.disabled = true;
@@ -2355,6 +2401,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           apiErrorCount: d.apiErrorCount || 0,
           progress: pct || 0
         }
+      }, () => {
+        console.log('[Popup] 💾 testStats 已保存:', {
+          testedCount: d.testedCount,
+          successCount: d.successCount,
+          failureCount: d.failureCount,
+          progress: pct
+        });
       });
 
       // 同步更新全局加载提示进度（若显示中）
@@ -2373,6 +2426,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     hideGlobalLoading();
 
     testingInProgress = false;
+
+    // 🔥 停止状态保活定时器
+    stopStateKeepAlive();
+
+    // 🔔 发送桌面通知
+    chrome.storage.local.get(['testStats'], (statsResult) => {
+      const stats = statsResult.testStats || {};
+      const successCount = stats.successCount || 0;
+      const failureCount = stats.failureCount || 0;
+      const testedCount = stats.testedCount || 0;
+
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('images/icon-128.png'),
+        title: '✅ 测试完成',
+        message: `总计: ${testedCount} 项 | ✅ 成功: ${successCount} | ❌ 失败: ${failureCount}`,
+        priority: 2
+      });
+
+      console.log('[Popup] 🔔 测试完成通知已发送');
+    });
+
     startTestBtn.disabled = false;
     startIntelligentTestBtn.disabled = false;
     stopTestBtn.disabled = true;
@@ -2409,6 +2484,74 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         inProgress: false,
         completed: true,
         completedAt: new Date().toISOString()
+      }
+    });
+  }
+});
+
+// =============================================
+// 🔥 定时保存测试状态（防止弹窗关闭导致状态丢失）
+// =============================================
+let stateKeepAliveTimer = null;
+
+function startStateKeepAlive () {
+  // 清除旧的定时器
+  if (stateKeepAliveTimer) {
+    clearInterval(stateKeepAliveTimer);
+  }
+
+  console.log('[Popup] 🔥 启动状态保活定时器（每2秒刷新一次）');
+
+  // 每2秒刷新一次状态
+  let healthCheckCount = 0;
+  stateKeepAliveTimer = setInterval(() => {
+    healthCheckCount++;
+    if (testingInProgress && currentTab) {
+      chrome.storage.local.get(['testingState'], (result) => {
+        const existing = result.testingState || {};
+        chrome.storage.local.set({
+          testingState: {
+            ...existing,
+            inProgress: true,
+            tabId: currentTab.id,
+            lastUpdate: new Date().toISOString(),
+            healthCheck: healthCheckCount
+          }
+        }, () => {
+          console.log('[Popup] ♻️ 状态已刷新（保活, 第' + healthCheckCount + '次）');
+        });
+      });
+    } else if (!testingInProgress) {
+      console.log('[Popup] ℹ️ 测试未进行中，停止刷新');
+      stopStateKeepAlive();
+    }
+  }, 2000);
+}
+
+function stopStateKeepAlive () {
+  if (stateKeepAliveTimer) {
+    console.log('[Popup] 🛑 停止状态保活定时器');
+    clearInterval(stateKeepAliveTimer);
+    stateKeepAliveTimer = null;
+  }
+}
+
+// 🔥 popup 关闭时的最后保存尝试（使用 unload 而非 beforeunload）
+window.addEventListener('unload', () => {
+  console.log('[Popup] ⚠️ 弹窗正在卸载，最后一次保存状态...');
+
+  stopStateKeepAlive();
+
+  if (testingInProgress && currentTab) {
+    console.log('[Popup] 🔥 检测到测试进行中，同步保存状态');
+    // 使用同步的方式保存（尽管异步，但会尽力完成）
+    chrome.storage.local.set({
+      testingState: {
+        inProgress: true,
+        mode: testingMode || 'auto',
+        url: urlInput?.value || '',
+        tabId: currentTab.id,
+        startTime: new Date().toISOString()
       }
     });
   }

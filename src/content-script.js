@@ -2242,12 +2242,17 @@ async function startAutomatedTest () {
       totalButtons: 0
     };
 
+    console.log('[Web测试工具] 🔢 testStats 已初始化:', testStats);
+
     // 初始化AI洞察收集
     window._aiInsights = { decisions: [], anomalies: [] };
 
     console.log('[Web测试工具] 📤 发送初始日志到popup');
     notifyPopup('addLog', `✓ 测试已开始！`, 'success');
     notifyPopup('addLog', `📄 页面: ${originalUrl}`, 'info');
+
+    // 🔥 立即发送初始状态到 popup
+    updateStatus();
 
     chrome.runtime.sendMessage({
       action: 'testStarted',
